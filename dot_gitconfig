@@ -1,0 +1,11 @@
+[user]
+	name = Pietro Pugliesi
+	email = pietropugliesi@icloud.com
+[pull]
+	rebase = true
+[init]
+	defaultBranch = master
+[merge]
+	tool = opendiff
+[core]
+	editor = nvim
