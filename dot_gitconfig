@@ -8,4 +8,4 @@
 [merge]
 	tool = opendiff
 [core]
-	editor = nvim
+	editor = vim
