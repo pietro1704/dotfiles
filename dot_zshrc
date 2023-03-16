@@ -144,6 +144,18 @@ fi
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 alias .="source"
+alias updateAll="sudo apt update && sudo apt full-upgrade -y && sudo apt dist-upgrade -y && omz update && sudo apt autoclean -y && sudo apt autoremove --purge -y && sudo flatpak update -y"
+alias updatePiholeGravity="docker exec pihole pihole -g"
+alias updatePiholeContainer="docker pull pihole/pihole && docker-compose down && docker-compose up -d"
+
+alias updateCalibre="sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin"
+alias python="python3.9"
+alias python3="python3.9"
+alias guitarraOn="pactl load-module module-loopback latency_msec=1"
+alias guitarraOff="pactl unload-module module-loopback"
+alias disableRightShiftKey="xmodmap -e 'keycode 62 = 0x0000'"
+
+alias sudo='sudo '
 
 alias sshSwaggerWeg="ssh -i "wemobv3-rsa-keyvalue.pem" -N -L 8080:internal-WemobALB-582589499.sa-east-1.elb.amazonaws.com:8080 ubuntu@ec2-54-94-175-60.sa-east-1.compute.amazonaws.com -v"
 
