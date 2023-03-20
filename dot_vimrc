@@ -1,3 +1,16 @@
-packadd! dracula
 syntax enable
 set number
+set mouse=a
+
+call plug#begin()
+
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf.vim'
+Plug 'preservim/nerdtree'
+Plug 'rust-lang/rust.vim'
+Plug 'vim-autoformat/vim-autoformat'
+Plug 'sbdchd/neoformat'
+
+call plug#end()
+
+nmap <C-;>:NERDTreeToggle<CR>
