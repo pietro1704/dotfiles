@@ -7,6 +7,8 @@ fi
 
 source ~/.bash_profile
 
+export JAVA_HOME="/usr/local/jdk-17.0.6.jdk/Contents/Home"
+
 # If you come from bash you might have to change your $PATH.
 path+=/bin
 path+=/usr/local/bin
@@ -19,6 +21,9 @@ path+=/Applications/Postgres.app/Contents/Versions/latest/bin
 path+=~/Developer/flutter/bin
 path+=~/.local/bin
 path+=/Applications/MacVim.app/Contents/bin
+path+=/Applications/sonar-qube/bin/macosx-universal-64
+path+=/Applications/sonar-scanner/bin
+path+=$JAVA_HOME/bin
 
 LANG=pt_BR.UTF-8
 LC_ALL=pt_BR.UTF-8
