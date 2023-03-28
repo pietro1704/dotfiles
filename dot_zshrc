@@ -107,6 +107,8 @@ PROMPT='%{$fg[green]%}%n@%m%{$reset_color%}:%{$fg[cyan]%}${(%):-%~}%{$reset_colo
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
   git
+  ruby
+  rails
   z
   zsh-autosuggestions
   zsh-syntax-highlighting
