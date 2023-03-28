@@ -21,4 +21,5 @@ Plug 'tpope/vim-commentary'
 
 call plug#end()
 
-nmap <C-;>:NERDTreeToggle<CR>
+nnoremap <leader>n :NERDTreeFocus<CR>
+nnoremap <C-;> :NERDTreeToggle<CR>
