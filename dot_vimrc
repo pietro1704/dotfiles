@@ -2,6 +2,13 @@ syntax enable
 set number
 set mouse=a
 
+set tabstop=2
+set softtabstop=2
+set shiftwidth=2
+set expandtab
+
+set shortmess=a
+
 call plug#begin()
 
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
