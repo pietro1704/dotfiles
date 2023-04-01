@@ -43,7 +43,7 @@ export TERM=xterm-256color
 # ZSH_THEME="robbyrussell"
 # ZSH_THEME="dracula"
 ZSH_THEME="powerlevel10k/powerlevel10k"
-source ~/powerlevel10k/powerlevel10k.zsh-theme
+# source ~/powerlevel10k/powerlevel10k.zsh-theme
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -180,7 +180,6 @@ alias ctags="`brew --prefix`/bin/ctags"
 # PATH="$HOME/.asdf/shims/:$PATH"
 # PATH="$HOME/.local/share/gem/ruby/3.2.0/bin:$PATH"
 
-source ~/powerlevel10k/powerlevel10k.zsh-theme
 source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 export PATH
