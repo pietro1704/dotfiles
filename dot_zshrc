@@ -9,6 +9,7 @@ source ~/.bash_profile
 
 export JAVA_HOME="/usr/local/jdk-17.0.6.jdk/Contents/Home"
 
+PATH="/usr/local/opt/curl/bin:$PATH"
 # If you come from bash you might have to change your $PATH.
 path+=/bin
 path+=/usr/local/bin
@@ -25,8 +26,9 @@ path+=/Applications/MacVim.app/Contents/bin
 path+=/Applications/sonar-qube/bin/macosx-universal-64
 path+=/Applications/sonar-scanner/bin
 path+=$JAVA_HOME/bin
-path+=/Applications/musikcube_macos_x86_64_0.99.5
+path+=/Applications/musikcube_macos_x86_64_3.0.0/
 
+# Variables
 LANG=pt_BR.UTF-8
 LC_ALL=pt_BR.UTF-8
 LANGUAGE=pt_BR.UTF-8
@@ -36,7 +38,11 @@ ZSH=~/.oh-my-zsh
 
 Path=$PATH
 
+# Exports
 export TERM=xterm-256color
+export LDFLAGS="-L/usr/local/opt/curl/lib"
+export CPPFLAGS="-I/usr/local/opt/curl/include"
+export PKG_CONFIG_PATH="/usr/local/opt/curl/lib/pkgconfig"
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
@@ -174,6 +180,8 @@ alias cleanAllCache="sudo rm -rf /Users/pietropugliesi/Library/Caches /Users/pie
 alias cleanXcode="sudo sh ~/Documents/clean-my-xcode-master/clean-my-xcode.sh"
 
 alias ctags="`brew --prefix`/bin/ctags"
+
+alias sshSwaggerWeg="ssh -i "wemobv3-rsa-keyvalue.pem" -N -L 8080:internal-WemobALB-582589499.sa-east-1.elb.amazonaws.com:8080 ubuntu@ec2-54-94-175-60.sa-east-1.compute.amazonaws.com -v"
 
 alias vim=nvim
 
