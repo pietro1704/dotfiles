@@ -20,7 +20,6 @@ path+=~/.emacs.d/bin
 path+=~/usr/local/sbin
 path+=/usr/local/sbin
 path+=/Applications/Postgres.app/Contents/Versions/latest/bin
-path+=~/Developer/flutter/bin
 path+=~/.local/bin
 path+=/Applications/MacVim.app/Contents/bin
 path+=/Applications/sonar-qube/bin/macosx-universal-64
