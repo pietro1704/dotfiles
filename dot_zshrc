@@ -27,6 +27,7 @@ path+=/Applications/sonar-qube/bin/macosx-universal-64
 path+=/Applications/sonar-scanner/bin
 path+=$JAVA_HOME/bin
 path+=/Applications/musikcube_macos_x86_64_3.0.0/
+path+=/Applications/flutter/bin
 
 # Variables
 LANG=pt_BR.UTF-8
