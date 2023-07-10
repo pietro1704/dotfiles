@@ -63,7 +63,7 @@ env:
 #     - buttonless: Title bar, transparent background and no title bar buttons
 
 window:
-  decorations: none
+  decorations: buttonless
 
 # Background opacity
 #
@@ -80,13 +80,13 @@ window:
 #
 # Values for `startup_mode` (macOS only):
 #   - SimpleFullscreen
-  startup_mode: Windowed
+  startup_mode: Maximized
 
 # Window title
 #title: Alacritty
 
 # Allow terminal applications to change Alacritty's window title.
-dynamic_title: true
+  dynamic_title: true
 
 # Window class (Linux/BSD only):
 #class:
@@ -112,7 +112,7 @@ dynamic_title: true
 #   - OnlyRight
 #   - Both
 #   - None (default)
-option_as_alt: Both
+  option_as_alt: Both
 
 #scrolling:
 # Maximum number of lines in the scrollback buffer.
