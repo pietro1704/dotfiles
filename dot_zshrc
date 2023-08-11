@@ -27,6 +27,7 @@ path+=/Applications/sonar-scanner/bin
 path+=$JAVA_HOME/bin
 path+=/Applications/musikcube_macos_x86_64_3.0.0/
 path+=/Applications/flutter/bin
+path+=~/.ghcup/bin
 
 # Variables
 LANG=pt_BR.UTF-8
@@ -173,7 +174,7 @@ fi
 alias .="source"
 alias python="python3"
 alias pip="pip3"
-alias updateAll="brew upgrade && brew cleanup && asdf update --all && omz update"
+alias updateAll="brew upgrade && brew cleanup && asdf update --all && asdf plugin update --all && omz update"
 alias sshLinux="ssh pietro@pietro-linux"
 alias cleanAllCache="sudo rm -rf /Users/pietropugliesi/Library/Caches /Users/pietropugliesi/Library/Logs /private/var/log/asl /Users/pietropugliesi/Library/Containers/com.apple.mail/Data/Library/Mail\ Downloads /private/var/folders/tb/tyll36ns0b7ct6whh913gggc0000gn/C/com.apple.DeveloperTools /private/var/db/diagnostics /Users/pietropugliesi/Library/Containers/com.apple.iMovieApp/Data/Library/Caches /Users/pietropugliesi/Library/Containers/com.apple.Safari/Data/Library/Caches /Library/Logs /Users/pietropugliesi/Library/Containers/com.apple.iBooksX/Data/Library/Caches /Users/pietropugliesi/Library/Application Support/Code /Users/pietropugliesi/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application\ Support/Slack/Cache /Users/pietropugliesi/Library/Application\ Support/discord/Cache /Users/pietropugliesi/Library/Containers/com.apple.mail/Data/Library/Caches /Users/pietropugliesi/Library/Application Support/Code/Cache /Users/pietropugliesi/Library/Containers/com.apple.QuickTimePlayerX/Data/Library/Caches/com.apple.avkit.thumbnailCache ; sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
 
@@ -203,3 +204,6 @@ autoload -Uz compinit && compinit
 # Source asdf on last line
 . ~/.asdf/asdf.sh
 . ~/.asdf/completions/asdf.bash
+
+# heroku autocomplete setup
+HEROKU_AC_ZSH_SETUP_PATH=/Users/pietropugliesi/Library/Caches/heroku/autocomplete/zsh_setup && test -f $HEROKU_AC_ZSH_SETUP_PATH && source $HEROKU_AC_ZSH_SETUP_PATH;
