@@ -172,8 +172,8 @@ fi
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 alias .="source"
-alias python="python3"
-alias pip="pip3"
+# alias python="python3"
+# alias pip="pip3"
 alias updateAll="brew upgrade && brew cleanup && asdf update --all && asdf plugin update --all && omz update"
 alias sshLinux="ssh pietro@pietro-linux"
 alias cleanAllCache="sudo rm -rf /Users/pietropugliesi/Library/Caches /Users/pietropugliesi/Library/Logs /private/var/log/asl /Users/pietropugliesi/Library/Containers/com.apple.mail/Data/Library/Mail\ Downloads /private/var/folders/tb/tyll36ns0b7ct6whh913gggc0000gn/C/com.apple.DeveloperTools /private/var/db/diagnostics /Users/pietropugliesi/Library/Containers/com.apple.iMovieApp/Data/Library/Caches /Users/pietropugliesi/Library/Containers/com.apple.Safari/Data/Library/Caches /Library/Logs /Users/pietropugliesi/Library/Containers/com.apple.iBooksX/Data/Library/Caches /Users/pietropugliesi/Library/Application Support/Code /Users/pietropugliesi/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application\ Support/Slack/Cache /Users/pietropugliesi/Library/Application\ Support/discord/Cache /Users/pietropugliesi/Library/Containers/com.apple.mail/Data/Library/Caches /Users/pietropugliesi/Library/Application Support/Code/Cache /Users/pietropugliesi/Library/Containers/com.apple.QuickTimePlayerX/Data/Library/Caches/com.apple.avkit.thumbnailCache ; sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
@@ -186,6 +186,8 @@ alias sshSwaggerWeg="ssh -i "wemobv3-rsa-keyvalue.pem" -N -L 8080:internal-Wemob
 
 alias vim=nvim
 
+alias shopt='/usr/bin/shopt'
+
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
@@ -193,6 +195,9 @@ alias vim=nvim
 # PATH="$HOME/.asdf/installs/rust/1.68.0/bin:$PATH"
 # PATH="$HOME/.asdf/shims/:$PATH"
 # PATH="$HOME/.local/share/gem/ruby/3.2.0/bin:$PATH"
+
+# heroku autocomplete setup
+HEROKU_AC_ZSH_SETUP_PATH=/Users/pietropugliesi/Library/Caches/heroku/autocomplete/zsh_setup && test -f $HEROKU_AC_ZSH_SETUP_PATH && source $HEROKU_AC_ZSH_SETUP_PATH;
 
 export PATH
 
@@ -204,6 +209,3 @@ autoload -Uz compinit && compinit
 # Source asdf on last line
 . ~/.asdf/asdf.sh
 . ~/.asdf/completions/asdf.bash
-
-# heroku autocomplete setup
-HEROKU_AC_ZSH_SETUP_PATH=/Users/pietropugliesi/Library/Caches/heroku/autocomplete/zsh_setup && test -f $HEROKU_AC_ZSH_SETUP_PATH && source $HEROKU_AC_ZSH_SETUP_PATH;
