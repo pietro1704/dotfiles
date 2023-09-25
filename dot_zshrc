@@ -25,11 +25,7 @@ ZSH=~/.oh-my-zsh
 
 Path=$PATH
 
-# Exports
 export TERM=xterm-256color
-export LDFLAGS="-L/usr/local/opt/curl/lib"
-export CPPFLAGS="-I/usr/local/opt/curl/include"
-export PKG_CONFIG_PATH="/usr/local/opt/curl/lib/pkgconfig"
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
@@ -38,6 +34,7 @@ export PKG_CONFIG_PATH="/usr/local/opt/curl/lib/pkgconfig"
 # ZSH_THEME="robbyrussell"
 # ZSH_THEME="dracula"
 ZSH_THEME="powerlevel10k/powerlevel10k"
+# source ~/powerlevel10k/powerlevel10k.zsh-theme
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -109,8 +106,6 @@ plugins=(
 )
 
 source $ZSH/oh-my-zsh.sh
-# source ~/.powerlevel10k/powerlevel10k.zsh-theme
-source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 # User configuration
 
@@ -144,26 +139,18 @@ fi
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 alias .="source"
-alias updateAll="sudo apt update && sudo apt full-upgrade -y && sudo apt dist-upgrade -y && omz update && sudo apt autoclean -y && sudo apt autoremove --purge -y && sudo flatpak update -y"
+alias updateAll="sudo pacman -Syyu && sudo flatpak update -y && sudo snap refresh -y && omz update"
 alias updatePiholeGravity="docker exec pihole pihole -g"
 alias updatePiholeContainer="docker pull pihole/pihole && docker-compose down && docker-compose up -d"
 
 alias updateCalibre="sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin"
-alias python="python3.9"
-alias python3="python3.9"
+# alias python="python3.9"
+# alias python3="python3.9"
 alias guitarraOn="pactl load-module module-loopback latency_msec=1"
 alias guitarraOff="pactl unload-module module-loopback"
 alias disableRightShiftKey="xmodmap -e 'keycode 62 = 0x0000'"
 
 alias sudo='sudo '
-
-alias sshSwaggerWeg="ssh -i "wemobv3-rsa-keyvalue.pem" -N -L 8080:internal-WemobALB-582589499.sa-east-1.elb.amazonaws.com:8080 ubuntu@ec2-54-94-175-60.sa-east-1.compute.amazonaws.com -v"
-
-alias vim=nvim
-
-alias shopt='/usr/bin/shopt'
-
-alias r=./bin/rails
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
