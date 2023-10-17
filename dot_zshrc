@@ -1,17 +1,22 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.  Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-source ~/.bash_profile
+if [ -d "/opt/homebrew/opt/ruby/bin" ]; then
+  export PATH=/opt/homebrew/opt/ruby/bin:$PATH
+  export PATH=`gem environment gemdir`/bin:$PATH
+fi
+
+# source ~/.bash_profile
 
 export JAVA_HOME="/usr/local/jdk-17.0.6.jdk/Contents/Home"
 # export TMUX_PLUGIN_MANAGER_PATH="~/.tmux/plugins/tpm"
 export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
 
 PATH="/usr/local/opt/curl/bin:$PATH"
+
 # If you come from bash you might have to change your $PATH.
 path+=/bin
 path+=/usr/local/bin
@@ -32,10 +37,16 @@ path+=/Applications/flutter/bin
 path+=~/.ghcup/bin
 path+=~/.xcodes/1.4.1/bin
 
+export PATH=/opt/homebrew/bin:$PATH
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+export PATH=/Users/pruypugliesi/bin:$PATH
+eval "$(pyenv init --path)"
+eval "$(rbenv init - zsh)"
+
 # Variables
-LANG=pt_BR.UTF-8
-LC_ALL=pt_BR.UTF-8
-LANGUAGE=pt_BR.UTF-8
+export LANG="pt_BR.UTF-8"
+export LC_ALL="pt_BR.UTF-8"
 
 # Path to your oh-my-zsh installation.
 ZSH=~/.oh-my-zsh
@@ -146,16 +157,16 @@ else
 fi
 
 # Brew autocomplete config
-if type brew &>/dev/null; then
-  HOMEBREW_PREFIX="$(brew --prefix)"
-  if [[ -r "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]]; then
-    source "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
-  else
-    for COMPLETION in "${HOMEBREW_PREFIX}/etc/bash_completion.d/"*; do
-      [[ -r "$COMPLETION" ]] && source "$COMPLETION"
-    done
-  fi
-fi
+# if type brew &>/dev/null; then
+#   HOMEBREW_PREFIX="$(brew --prefix)"
+#   if [[ -r "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]]; then
+#     source "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
+#   else
+#     for COMPLETION in "${HOMEBREW_PREFIX}/etc/bash_completion.d/"*; do
+#       [[ -r "$COMPLETION" ]] && source "$COMPLETION"
+#     done
+#   fi
+# fi
 
 # auto-completion
 if [ -f /opt/local/etc/profile.d/bash_completion.sh ]; then
