@@ -11,6 +11,15 @@ fi
 
 # source ~/.bash_profile
 
+<<<<<<< HEAD
+export JAVA_HOME="/usr/local/jdk-17.0.6.jdk/Contents/Home"
+# export TMUX_PLUGIN_MANAGER_PATH="~/.tmux/plugins/tpm"
+export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
+
+PATH="/usr/local/opt/curl/bin:$PATH"
+
+=======
+>>>>>>> b1b6834 (removed M1 mac and previous job Mac related files)
 # If you come from bash you might have to change your $PATH.
 path+=/bin
 path+=/usr/local/bin
@@ -194,7 +203,11 @@ alias cleanXcode="sudo sh ~/Documents/clean-my-xcode-master/clean-my-xcode.sh"
 
 alias ctags="`brew --prefix`/bin/ctags"
 
+<<<<<<< HEAD
+# alias vim=nvim
+=======
 alias vim=nvim
+>>>>>>> b1b6834 (removed M1 mac and previous job Mac related files)
 
 alias shopt='/usr/bin/shopt'
 
