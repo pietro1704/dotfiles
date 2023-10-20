@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # setting the locale, some users have issues with different locales, this forces the correct one
-export LC_ALL=en_US.UTF-8
+export LC_ALL=pt_BR.UTF-8
 
 fahrenheit=$1
 isFixedLocation=$2
