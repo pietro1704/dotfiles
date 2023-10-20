@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # setting the locale, some users have issues with different locales, this forces the correct one
-export LC_ALL=en_US.UTF-8
+export LC_ALL=pt_BR.UTF-8
 
 fahrenheit=$1
 isFixedLocation=$2
@@ -15,7 +15,7 @@ location=$3
 
 # echo "isFixedLocation = $isFixedLocation"
 # echo "location = $location"
-  
+
 # display_location() {
 #   if $isFixedLocation && [ "$location" ]; then
 #     echo " $location"
@@ -29,16 +29,16 @@ location=$3
 # }
 
 # fetch_weather_information() {
-  # display_weather=$1
-  # %m moon phase
-  # %p precipitation for 3h
-  # %C weather
-  # %t temperature
-  # + or %20: space
-  # curl -sL wttr.in/$location\?format="%C+%t$display_weather"
+# display_weather=$1
+# %m moon phase
+# %p precipitation for 3h
+# %C weather
+# %t temperature
+# + or %20: space
+# curl -sL wttr.in/$location\?format="%C+%t$display_weather"
 
-  # &m is for meters format
-  # curl wttr.in/"$location"\?format="%m+%p+%C+%t"\&lang=pt-br\&m
+# &m is for meters format
+# curl wttr.in/"$location"\?format="%m+%p+%C+%t"\&lang=pt-br\&m
 
 # }
 
@@ -79,13 +79,15 @@ location=$3
 # }
 
 # main() {
-  # echo "$(display_weather)$(display_location)"
-   # %m moon phase
-  # %p precipitation for 3h
-  # %C weather
-  # %t temperature
-  # + or %20: space
-   curl wttr.in/"$location"\?format="%m+|+%D+-+%d+|+%p+|+%C+%t+%l"\&lang=pt-br\&m
+# echo "$(display_weather)$(display_location)"
+# %m moon phase
+# %p precipitation for 3h
+# %C weather
+# %t temperature
+# + or %20: space
+# echo $LC_ALL
+# echo $LANG
+curl wttr.in/"$location"\?format="%m+|+%D+-+%d+|+%p+|+%C+%t+%l"\&lang=pt-br\&m
 # }
 
 #run main driver program
