@@ -87,7 +87,7 @@ location=$3
 # + or %20: space
 # echo $LC_ALL
 # echo $LANG
-curl wttr.in/"$location"\?format="%m+|+%D+-+%d+|+%p+|+%C+%t+%l"\&lang=pt-br\&m
+curl wttr.in/"$location"\?format="%m+|+%S+-+%s+|+%p+|+%C+%t+%l"\&lang=pt-br\&m
 # }
 
 #run main driver program

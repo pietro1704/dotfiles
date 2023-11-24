@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # setting the locale, some users have issues with different locales, this forces the correct one
 # export LC_ALL=en_US.UTF-8
-export LC_ALL="pt_BR.UTF-8"
-export LANG="pt_BR.UTF-8"
-
-echo "tmux dracula loaded. LC_ALL=$(LC_ALL)"
+# export LC_ALL=pt_BR.UTF-8
+# export LANG="pt_BR.UTF-8"
+export LC_ALL=pt_BR.UTF-8
+# echo "tmux dracula loaded. LC_ALL=$(LC_ALL)"
 
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $current_dir/utils.sh
@@ -31,7 +31,7 @@ main()
   show_right_sep=$(get_tmux_option "@dracula-show-right-sep" )
   show_border_contrast=$(get_tmux_option "@dracula-border-contrast" false)
   show_day_month=$(get_tmux_option "@dracula-day-month" false)
-  show_refresh=$(get_tmux_option "@dracula-refresh-rate" 5)
+  show_refresh=$(get_tmux_option "@dracula-refresh-rate" 0.1)
   show_synchronize_panes_label=$(get_tmux_option "@dracula-synchronize-panes-label" "Sync")
   time_format=$(get_tmux_option "@dracula-time-format" "")
   IFS=' ' read -r -a plugins <<< $(get_tmux_option "@dracula-plugins" "battery network weather")
@@ -95,7 +95,7 @@ main()
   esac
 
   # sets refresh interval to every 5 seconds
-  tmux set-option -g status-interval $show_refresh
+  tmux set-option -g status-interval 1
 
   # set the prefix + t time format
   if $show_military; then
@@ -237,6 +237,12 @@ main()
 
     elif [ $plugin = "time" ]; then
       IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-time-colors" "dark_purple white")
+      # script="%a %d/%m %I:%M %p ${timezone} "
+      # script="oi" 
+
+      # script="$(LC_ALL="pt_BR.UTF-8" date +"%a, %d %b %Y, %T")"
+
+      LC_ALL=pt_BR.UTF-8
       if [ -n "$time_format" ]; then
         script=${time_format}
       else
