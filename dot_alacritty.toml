@@ -1,4 +1,4 @@
-alphabet = "jfkdls;ahgurieowpq"
+# alphabet = "jfkdls;ahgurieowpq"
 import = ["/Users/pruypugliesi/.dracula-alacritty/dracula.toml"]
 
 [env]
@@ -75,6 +75,10 @@ chars = "\u001B\u007F"
 key = "Back"
 mods = "Alt"
 
+[[keyboard.bindings]]
+chars = "\u000D"
+key = "NumpadEnter"
+
 [shell]
 args = ["-l", "-c", "tmux new -A"]
 program = "/bin/zsh"
@@ -83,4 +87,4 @@ program = "/bin/zsh"
 decorations = "buttonless"
 dynamic_title = true
 option_as_alt = "Both"
-startup_mode = "Windowed"
+startup_mode = "FullScreen"
