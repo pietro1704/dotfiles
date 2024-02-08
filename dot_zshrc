@@ -11,6 +11,12 @@ fi
 
 # source ~/.bash_profile
 
+export JAVA_HOME="/usr/local/jdk-17.0.6.jdk/Contents/Home"
+# export TMUX_PLUGIN_MANAGER_PATH="~/.tmux/plugins/tpm"
+export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
+
+PATH="/usr/local/opt/curl/bin:$PATH"
+
 # If you come from bash you might have to change your $PATH.
 path+=/bin
 path+=/usr/local/bin
@@ -31,16 +37,21 @@ path+=/Applications/flutter/bin
 path+=~/.ghcup/bin
 path+=~/.xcodes/1.4.1/bin
 
-export PATH=/opt/homebrew/bin:$PATH
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 export PATH=/Users/pruypugliesi/bin:$PATH
+
+# Prefer homebrew programs over default ones
+# Needs to be the last path export command to avoid overwriting
+export PATH=/opt/homebrew/bin:$PATH
+
 eval "$(pyenv init --path)"
 eval "$(rbenv init - zsh)"
 
 # Variables
 export LANG="pt_BR.UTF-8"
 export LC_ALL="pt_BR.UTF-8"
+export LC_NUMERIC="en_US.UTF-8"
 
 # Path to your oh-my-zsh installation.
 ZSH=~/.oh-my-zsh
@@ -132,6 +143,9 @@ plugins=(
   zsh-syntax-highlighting
 )
 
+FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+rm -f ~/.zcompdump; # compinit
+
 source $ZSH/oh-my-zsh.sh
 # source ~/.powerlevel10k/powerlevel10k.zsh-theme
 # source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -150,27 +164,6 @@ else
   EDITOR='lvim'
 fi
 
-# Brew autocomplete config
-# if type brew &>/dev/null; then
-#   HOMEBREW_PREFIX="$(brew --prefix)"
-#   if [[ -r "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]]; then
-#     source "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
-#   else
-#     for COMPLETION in "${HOMEBREW_PREFIX}/etc/bash_completion.d/"*; do
-#       [[ -r "$COMPLETION" ]] && source "$COMPLETION"
-#     done
-#   fi
-# fi
-
-# auto-completion
-if [ -f /opt/local/etc/profile.d/bash_completion.sh ]; then
-  . /opt/local/etc/profile.d/bash_completion.sh
-fi
-
-if [ -f $(brew --prefix)/etc/bash_completion ]; then
-  . $(brew --prefix)/etc/bash_completion
-fi
-
 # Compilation flags
 # ARCHFLAGS="-arch x86_64"
 
@@ -186,6 +179,7 @@ fi
 alias .="source"
 # alias python="python3"
 # alias pip="pip3"
+alias vim="nvim"
 alias updateAll="brew upgrade && brew cleanup && omz update"
 alias sshLinux="ssh pietro@pietro-linux"
 alias cleanAllCache="sudo rm -rf /Users/pietropugliesi/Library/Caches /Users/pietropugliesi/Library/Logs /private/var/log/asl /Users/pietropugliesi/Library/Containers/com.apple.mail/Data/Library/Mail\ Downloads /private/var/folders/tb/tyll36ns0b7ct6whh913gggc0000gn/C/com.apple.DeveloperTools /private/var/db/diagnostics /Users/pietropugliesi/Library/Containers/com.apple.iMovieApp/Data/Library/Caches /Users/pietropugliesi/Library/Containers/com.apple.Safari/Data/Library/Caches /Library/Logs /Users/pietropugliesi/Library/Containers/com.apple.iBooksX/Data/Library/Caches /Users/pietropugliesi/Library/Application Support/Code /Users/pietropugliesi/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application\ Support/Slack/Cache /Users/pietropugliesi/Library/Application\ Support/discord/Cache /Users/pietropugliesi/Library/Containers/com.apple.mail/Data/Library/Caches /Users/pietropugliesi/Library/Application Support/Code/Cache /Users/pietropugliesi/Library/Containers/com.apple.QuickTimePlayerX/Data/Library/Caches/com.apple.avkit.thumbnailCache ; sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
@@ -194,11 +188,13 @@ alias cleanXcode="sudo sh ~/Documents/clean-my-xcode-master/clean-my-xcode.sh"
 
 alias ctags="`brew --prefix`/bin/ctags"
 
-alias vim=nvim
+# alias vim=nvim
 
 alias shopt='/usr/bin/shopt'
 
 alias r=./bin/rails
+
+alias gs='gironde sign -ca github'
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
