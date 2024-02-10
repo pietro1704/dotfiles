@@ -192,5 +192,5 @@ fpath=(${ASDF_DIR}/completions $fpath)
 # initialise completions with ZSH's compinit
 autoload -Uz compinit && compinit
 # Source asdf on last line
-# . ~/.asdf/asdf.sh
-# . ~/.asdf/completions/asdf.bash
+. ~/.asdf/asdf.sh
+. ~/.asdf/completions/asdf.bash
