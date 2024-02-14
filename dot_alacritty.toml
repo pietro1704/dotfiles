@@ -1,5 +1,5 @@
 # alphabet = "jfkdls;ahgurieowpq"
-import = ["/Users/pruypugliesi/.dracula-alacritty/dracula.toml"]
+import = ["~/.dracula-alacritty/dracula.toml"]
 
 [env]
 TERM = "xterm-256color"
