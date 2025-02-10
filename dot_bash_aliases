@@ -1,0 +1,5 @@
+alias ssh-devapp='gironde ssh devapp'
+alias ffom='git fetch origin master && git merge --ff-only origin/master'
+alias rbm='git rebase origin/master'
+alias test_spinner='./test_workflows.sh'
+

@@ -1,0 +1,22 @@
+python
+python -V
+python3 -V
+python3.11 -V
+python
+exit
+echo $LANG
+echo LC_ALL
+echo LC_ALL
+echo LC_ALL
+echo $LC_ALL
+exit
+locale
+exit
+exit
+env
+env|rg oi
+env|rg LC_NUMERIC
+exit
+brew
+exit
+exit
