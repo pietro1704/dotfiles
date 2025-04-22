@@ -21,5 +21,6 @@ Plug '/usr/local/opt/fzf'
 Plug 'junegunn/fzf.vim'
 Plug 'Shougo/neocomplete.vim' "  neocomplete Plugin
 Plug 'tpope/vim-commentary'
+Plug 'lambdalisue/vim-gitignore'
 
 call plug#end()
