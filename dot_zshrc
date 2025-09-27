@@ -11,12 +11,24 @@ fi
 
 
 # source ~/.bash_profile
+# Homebrew setup - detect Intel vs Apple Silicon
+if [[ -f "/opt/homebrew/bin/brew" ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [[ -f "/usr/local/bin/brew" ]]; then
+  export HOMEBREW_PREFIX="/usr/local"
+  export HOMEBREW_CELLAR="/usr/local/Cellar"
+  export HOMEBREW_REPOSITORY="/usr/local/Homebrew"
+  export PATH="/usr/local/bin:/usr/local/sbin${PATH+:$PATH}"
+fi
 
-# Source ZSH  homebrew plugins:
-source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-# source /opt/homebrew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
-# source /opt/homebrew/share/zsh-autocomplete/zsh-autocomplete.plugin.zsh
+# Homebrew zsh plugins
+if [[ -f "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+  source "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+fi
+
+if [[ -f "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
+  source "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+fi
 
 export JAVA_HOME="/usr/local/jdk-17.0.6.jdk/Contents/Home"
 # export TMUX_PLUGIN_MANAGER_PATH="~/.tmux/plugins/tpm"
@@ -24,46 +36,45 @@ export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
 
 PATH="/usr/local/opt/curl/bin:$PATH"
 
-# If you come from bash you might have to change your $PATH.
-path+=/bin
-path+=/usr/local/bin
-path+=/opt/homebrew/bin
-path+=~/bin
-path+=~/usr/local/bin
-path+=~/.emacs.d/bin
-path+=~/usr/local/sbin
-path+=/usr/local/sbin
-path+=/Applications/Postgres.app/Contents/Versions/latest/bin
-path+=~/.local/bin
-path+=/Applications/MacVim.app/Contents/bin
-path+=/Applications/sonar-qube/bin/macosx-universal-64
-path+=/Applications/sonar-scanner/bin
-path+=$JAVA_HOME/bin
-path+=/Applications/musikcube_macos_x86_64_3.0.0/
-path+=/Applications/flutter/bin
-path+=~/.ghcup/bin
-path+=~/.xcodes/1.4.1/bin
+# Additional PATH entries
+path+=(
+  ~/bin
+  ~/.emacs.d/bin
+  ~/.local/bin
+  ~/.ghcup/bin
+  ~/.xcodes/1.4.1/bin
+  /Applications/Postgres.app/Contents/Versions/latest/bin
+  /Applications/MacVim.app/Contents/bin
+  /Applications/sonar-qube/bin/macosx-universal-64
+  /Applications/sonar-scanner/bin
+  /Applications/musikcube_macos_x86_64_3.0.0/
+  /Applications/flutter/bin
+  $JAVA_HOME/bin
+)
 
+# Python version management
 export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-export PATH=/Users/pruypugliesi/bin:$PATH
+if command -v pyenv >/dev/null 2>&1; then
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init --path)"
+fi
 
-# Prefer homebrew programs over default ones
-# Needs to be the last path export command to avoid overwriting
-export PATH=/opt/homebrew/bin:$PATH
-
-eval "$(pyenv init --path)"
-eval "$(rbenv init - zsh)"
+# Ruby version management
+if command -v rbenv >/dev/null 2>&1; then
+  eval "$(rbenv init - zsh)"
+fi
 
 # Variables
 export LANG="pt_BR.UTF-8"
 # export LC_ALL="pt_BR.UTF-8"
 export LC_NUMERIC="en_US.UTF-8"
 
+# Disable oh-my-zsh security warnings for Homebrew directories
+ZSH_DISABLE_COMPFIX="true"
+
 # Path to your oh-my-zsh installation.
 ZSH=~/.oh-my-zsh
 
-Path=$PATH
 
 # Exports
 export TERM=xterm-256color
@@ -113,7 +124,6 @@ DISABLE_UPDATE_PROMPT="true"
 # Uncomment the following line to enable command auto-correction.
 ENABLE_CORRECTION="true"
 
-PROMPT='%{$fg[green]%}%n@%m%{$reset_color%}:%{$fg[cyan]%}${(%):-%~}%{$reset_color%}$ '
 
 # Uncomment the following line to display red dots whilst waiting for completion.
 # Caution: this setting can cause issues with multiline prompts (zsh 5.7.1 and newer seem to work)
@@ -148,8 +158,11 @@ plugins=(
   z
 )
 
-FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
-rm -f ~/.zcompdump; # compinit
+# Homebrew completions
+if type brew &>/dev/null; then
+  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+  rm -f ~/.zcompdump
+fi
 
 source $ZSH/oh-my-zsh.sh
 # source ~/.powerlevel10k/powerlevel10k.zsh-theme
@@ -206,8 +219,39 @@ alias .="source"
 # alias pip="pip3"
 # alias vim="nvim"
 alias updateAll="brew upgrade && brew upgrade --cask --greedy && brew cleanup && omz update"
-alias sshLinux="ssh pietro@pietro-linux"
-alias cleanAllCache="sudo rm -rf /Users/pietropugliesi/Library/Caches /Users/pietropugliesi/Library/Logs /private/var/log/asl /Users/pietropugliesi/Library/Containers/com.apple.mail/Data/Library/Mail\ Downloads /private/var/folders/tb/tyll36ns0b7ct6whh913gggc0000gn/C/com.apple.DeveloperTools /private/var/db/diagnostics /Users/pietropugliesi/Library/Containers/com.apple.iMovieApp/Data/Library/Caches /Users/pietropugliesi/Library/Containers/com.apple.Safari/Data/Library/Caches /Library/Logs /Users/pietropugliesi/Library/Containers/com.apple.iBooksX/Data/Library/Caches /Users/pietropugliesi/Library/Application Support/Code /Users/pietropugliesi/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application\ Support/Slack/Cache /Users/pietropugliesi/Library/Application\ Support/discord/Cache /Users/pietropugliesi/Library/Containers/com.apple.mail/Data/Library/Caches /Users/pietropugliesi/Library/Application Support/Code/Cache /Users/pietropugliesi/Library/Containers/com.apple.QuickTimePlayerX/Data/Library/Caches/com.apple.avkit.thumbnailCache ; sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
+alias sshLinux="ssh pips@arch"
+function cleanAllCache() {
+  echo "⚠️  This will clean system and app caches. Continue? (y/N)"
+  read -q "REPLY?> " || return 1
+  echo
+
+  echo "🧹 Cleaning user caches..."
+  local cache_dirs=(
+    "$HOME/Library/Caches"
+    "$HOME/Library/Logs"
+    "$HOME/Library/Application Support/Code/CachedData"
+    "$HOME/Library/Application Support/discord/Cache"
+  )
+
+  for dir in "${cache_dirs[@]}"; do
+    if [[ -d "$dir" ]]; then
+      echo "  Cleaning $dir"
+      find "$dir" -type f -atime +7 -delete 2>/dev/null || true
+    fi
+  done
+
+  echo "🧹 Cleaning system caches (requires sudo)..."
+  echo "Continue with system cache cleanup? (y/N)"
+  read -q "REPLY?> " || return 1
+  echo
+
+  sudo rm -rf /private/var/log/asl/* 2>/dev/null || true
+  sudo rm -rf /private/var/folders/*/C/com.apple.DeveloperTools 2>/dev/null || true
+  sudo dscacheutil -flushcache
+  sudo killall -HUP mDNSResponder
+
+  echo "✅ Cache cleanup completed!"
+}
 
 alias cleanXcode="sudo sh ~/Documents/clean-my-xcode-master/clean-my-xcode.sh"
 
@@ -224,10 +268,6 @@ alias gs='gironde sign -ca github'
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# asdf path files
-# PATH="$HOME/.asdf/installs/rust/1.68.0/bin:$PATH"
-# PATH="$HOME/.asdf/shims/:$PATH"
-# PATH="$HOME/.local/share/gem/ruby/3.2.0/bin:$PATH"
 
 # heroku autocomplete setup
 HEROKU_AC_ZSH_SETUP_PATH=/Users/pietropugliesi/Library/Caches/heroku/autocomplete/zsh_setup && test -f $HEROKU_AC_ZSH_SETUP_PATH && source $HEROKU_AC_ZSH_SETUP_PATH;
@@ -237,13 +277,66 @@ export PATH
 # Add keychain on system init
 ssh-add --apple-use-keychain -K ~/.ssh/id_ed25519 > /dev/null 2>&1  
 
-# ASDF SETUP - Needs to stay on last lines
-# append completions to fpath
-fpath=(${ASDF_DIR}/completions $fpath)
-# initialise completions with ZSH's compinit
+# Initialize completions
 autoload -Uz compinit && compinit
-# Source asdf on last line
-# . ~/.asdf/asdf.sh
-# . ~/.asdf/completions/asdf.bash
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENHANCED ZSH CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# History configuration
+export HISTSIZE=10000
+export SAVEHIST=10000
+setopt HIST_VERIFY
+setopt SHARE_HISTORY
+setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_FIND_NO_DUPS
+setopt HIST_SAVE_NO_DUPS
+
+# Better directory navigation
+setopt AUTO_CD
+setopt AUTO_PUSHD
+setopt PUSHD_IGNORE_DUPS
+setopt PUSHD_SILENT
+
+# Better completion
+setopt COMPLETE_IN_WORD
+setopt ALWAYS_TO_END
+setopt AUTO_MENU
+setopt AUTO_LIST
+setopt AUTO_PARAM_SLASH
+unsetopt MENU_COMPLETE
+unsetopt FLOWCONTROL
+
+# Useful functions
+function mkcd() { mkdir -p "$1" && cd "$1"; }
+function extract() {
+  if [[ -f $1 ]]; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1     ;;
+      *.tar.gz)    tar xzf $1     ;;
+      *.bz2)       bunzip2 $1     ;;
+      *.rar)       unrar e $1     ;;
+      *.gz)        gunzip $1      ;;
+      *.tar)       tar xf $1      ;;
+      *.tbz2)      tar xjf $1     ;;
+      *.tgz)       tar xzf $1     ;;
+      *.zip)       unzip $1       ;;
+      *.Z)         uncompress $1  ;;
+      *.7z)        7z x $1        ;;
+      *)           echo "'$1' cannot be extracted via extract()" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+function weather() { curl -s "wttr.in/${1:-Sao+Paulo}?format=3"; }
+function ports() { lsof -iTCP -sTCP:LISTEN -n -P; }
+function myip() { curl -s ifconfig.me; echo; }
