@@ -4,6 +4,15 @@ TERM = "xterm-256color"
 
 [font]
 size = 12.0
+builtin_box_drawing = true
+
+[font.offset]
+x = 0
+y = 0
+
+[font.glyph_offset]
+x = 0
+y = 0
 
 [font.bold]
 family = "MesloLGS NF"
@@ -77,18 +86,46 @@ mods = "Alt"
 chars = "\u000D"
 key = "NumpadEnter"
 
+# change option key behavior
+# [[keyboard.bindings]]
+# key = "Left"
+# mods = "Alt"
+# action = "Left"
+
+# [[keyboard.bindings]]
+# key = "Right"
+# mods = "Alt"
+# action = "Right"
+
+
 [terminal.shell]
 args = ["-l", "-c", "tmux new -A"]
 program = "/bin/zsh"
 
 [window]
-decorations = "buttonless"
+decorations = "None"
 dynamic_title = true
 option_as_alt = "Both"
 startup_mode = "Fullscreen"
 
+[window.dimensions]
+columns = 0
+lines = 0
+
+[window.padding]
+x = 0
+y = 0
+
 [general]
 # alphabet = "jfkdls;ahgurieowpq"
-import = ["~/.dracula-alacritty/dracula.toml"]
+import = [
+  # "~/.dracula-alacritty/dracula.toml"]
+#
+# uncomment the flavour you want below:
+# "~/.config/alacritty/catppuccin-latte.toml"
+# "~/.config/alacritty/catppuccin-frappe.toml"
+# "~/.config/alacritty/catppuccin-macchiato.toml"
+ "~/.config/alacritty/catppuccin-mocha.toml"
+]
 
 [terminal]
