@@ -44,6 +44,10 @@ P.S. You can delete this when you're done too. It's your config now :)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+-- Disable netrw (we use nvim-tree instead)
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    https://github.com/folke/lazy.nvim
 --    `:help lazy.nvim.txt` for more info
@@ -75,6 +79,16 @@ require('lazy').setup({
 
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
+  { 'nvim-tree/nvim-web-devicons', lazy = true },
+  {
+    'rcarriga/nvim-notify',
+    config = function()
+      local notify = require 'notify'
+      notify.setup {}
+      vim.notify = notify
+    end,
+  },
+  { 'stevearc/dressing.nvim', opts = {} },
 
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
@@ -121,6 +135,19 @@ require('lazy').setup({
       -- Adds a number of user-friendly snippets
       'rafamadriz/friendly-snippets',
     },
+  },
+  {
+    'windwp/nvim-autopairs',
+    event = 'InsertEnter',
+    dependencies = { 'hrsh7th/nvim-cmp' },
+    opts = {},
+    config = function(_, opts)
+      local npairs = require 'nvim-autopairs'
+      npairs.setup(opts)
+      local cmp_autopairs = require 'nvim-autopairs.completion.cmp'
+      local cmp = require 'cmp'
+      cmp.event:on('confirm_done', cmp_autopairs.on_confirm_done())
+    end,
   },
 
   -- Useful plugin to show you pending keybinds.
@@ -213,6 +240,20 @@ require('lazy').setup({
       require('onedark').load()
     end,
   },
+  {
+    'nvim-tree/nvim-tree.lua',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    cmd = { 'NvimTreeToggle', 'NvimTreeFocus' },
+    keys = {
+      { '<C-o>', '<cmd>NvimTreeToggle<cr>', desc = 'Alterna árvore de arquivos' },
+    },
+    opts = {
+      respect_buf_cwd = true,
+      view = { width = 42 },
+      renderer = { highlight_git = true },
+      filters = { dotfiles = false },
+    },
+  },
 
   {
     -- Set lualine as statusline
@@ -220,7 +261,7 @@ require('lazy').setup({
     -- See `:help lualine.txt`
     opts = {
       options = {
-        icons_enabled = false,
+        icons_enabled = true,
         theme = 'auto',
         component_separators = '|',
         section_separators = '',
@@ -239,6 +280,15 @@ require('lazy').setup({
 
   -- "gc" to comment visual regions/lines
   { 'numToStr/Comment.nvim', opts = {} },
+  'vim-ruby/vim-ruby',
+  'tpope/vim-rails',
+  {
+    'weizheheng/ror.nvim',
+    dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim' },
+    config = function()
+      require('ror').setup {}
+    end,
+  },
 
   -- Fuzzy Finder (files, lsp, etc)
   {
@@ -298,6 +348,22 @@ vim.wo.number = true
 -- Enable mouse mode
 vim.o.mouse = 'a'
 
+-- Additional UI/UX tweaks from the legacy vimrc
+vim.o.cursorline = true
+vim.o.scrolloff = 8
+vim.o.colorcolumn = '100'
+vim.o.splitbelow = true
+vim.o.splitright = true
+vim.o.cmdheight = 2
+vim.o.hidden = true
+vim.o.autoread = true
+vim.o.spell = true
+vim.o.spelllang = 'en_us,pt_br'
+vim.o.backup = false
+vim.o.writebackup = false
+vim.o.swapfile = false
+vim.o.encoding = 'utf-8'
+
 -- Sync clipboard between OS and Neovim.
 --  Remove this option if you want your OS clipboard to remain independent.
 --  See `:help 'clipboard'`
@@ -312,12 +378,13 @@ vim.o.undofile = true
 -- Case-insensitive searching UNLESS \C or capital in search
 vim.o.ignorecase = true
 vim.o.smartcase = true
+vim.o.incsearch = true
 
 -- Keep signcolumn on by default
 vim.wo.signcolumn = 'yes'
 
 -- Decrease update time
-vim.o.updatetime = 250
+vim.o.updatetime = 100
 vim.o.timeoutlen = 300
 
 -- Set completeopt to have a better completion experience
@@ -326,21 +393,60 @@ vim.o.completeopt = 'menuone,noselect'
 -- NOTE: You should make sure your terminal supports this
 vim.o.termguicolors = true
 
+local opt = vim.opt
+opt.tabstop = 2
+opt.shiftwidth = 2
+opt.softtabstop = 2
+opt.expandtab = true
+opt.smartindent = true
+opt.smarttab = true
+opt.path:append '**'
+opt.wildmenu = true
+opt.wildignore:append { '**/node_modules/**', '*.exe', '*.dll', '*.pdb' }
+opt.shortmess:append 'a'
+opt.grepprg = 'git\\ grep\\ -n'
+
 -- [[ Basic Keymaps ]]
 
 -- Keymaps for better default experience
 -- See `:help vim.keymap.set()`
 vim.keymap.set({ 'n', 'v' }, '<Space>', '<Nop>', { silent = true })
 
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'ruby', 'eruby' },
+  callback = function()
+    vim.opt_local.shiftwidth = 2
+    vim.opt_local.tabstop = 2
+    vim.opt_local.softtabstop = 2
+    vim.opt_local.expandtab = true
+    vim.opt_local.commentstring = '# %s'
+  end,
+})
+
 -- Remap for dealing with word wrap
 vim.keymap.set('n', 'k', "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
 vim.keymap.set('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
+
+local telescope_builtin = require 'telescope.builtin'
+vim.keymap.set('n', '<C-x>', telescope_builtin.find_files, { desc = 'Find files (FZF)', silent = true })
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous diagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next diagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Open floating diagnostic message' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostics list' })
+
+vim.keymap.set({ 'n', 'v' }, '<leader>y', '"+y', { desc = 'Yank to system clipboard (+)' })
+vim.keymap.set({ 'n', 'v' }, '<leader>Y', '"*y', { desc = 'Yank to selection clipboard (*)' })
+vim.keymap.set({ 'n', 'v' }, '<leader>p', '"+p', { desc = 'Paste from system clipboard (+)' })
+vim.keymap.set({ 'n', 'v' }, '<leader>P', '"*p', { desc = 'Paste from selection clipboard (*)' })
+
+vim.keymap.set('n', '\\', function()
+  require('Comment.api').toggle.linewise.current()
+end, { desc = 'Toggle comment' })
+vim.keymap.set('v', '\\', function()
+  require('Comment.api').toggle.linewise(vim.fn.visualmode())
+end, { desc = 'Toggle comment selection' })
 
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
