@@ -6,16 +6,37 @@ fi
 
 # MARK: - Ruby Path Setup
 
-if [ -d "/opt/homebrew/opt/ruby/bin" ]; then
-  export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
-  export PATH="$(gem environment gemdir)/bin:$PATH"
+if command -v brew >/dev/null 2>&1; then
+  HOMEBREW_PREFIX="$(brew --prefix)"
+elif [ -d "/opt/homebrew" ]; then
+  HOMEBREW_PREFIX="/opt/homebrew"
+elif [ -d "/usr/local" ]; then
+  HOMEBREW_PREFIX="/usr/local"
+else
+  HOMEBREW_PREFIX=""
+fi
+
+if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/ruby/bin" ]; then
+  export PATH="$HOMEBREW_PREFIX/opt/ruby/bin:$PATH"
+  if command -v gem >/dev/null 2>&1; then
+    GEM_DIR="$(gem environment gemdir 2>/dev/null)"
+    if [ -n "$GEM_DIR" ] && [ -d "$GEM_DIR/bin" ]; then
+      export PATH="$GEM_DIR/bin:$PATH"
+    fi
+  fi
 fi
 
 # MARK: - Plugins
 
 # Zsh plugins via Homebrew
-source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+if [ -n "$HOMEBREW_PREFIX" ]; then
+  if [ -f "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+    source "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+  fi
+  if [ -f "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]; then
+    source "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+  fi
+fi
 
 # MARK: - Java
 
@@ -36,7 +57,9 @@ export PATH="/usr/local/opt/curl/bin:$PATH"
 # System paths, tools, custom bins
 path+=/bin
 path+=/usr/local/bin
-path+=/opt/homebrew/bin
+if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/bin" ]; then
+  path+=$HOMEBREW_PREFIX/bin
+fi
 path+=~/bin
 path+=~/usr/local/bin
 path+=~/.emacs.d/bin
@@ -57,15 +80,19 @@ export ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
 
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
-export PATH="/Users/pruypugliesi/bin:$PATH"
+export PATH="$HOME/bin:$PATH"
 
 # Always favor homebrew binaries
-export PATH="/opt/homebrew/bin:$PATH"
+if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/bin" ]; then
+  export PATH="$HOMEBREW_PREFIX/bin:$PATH"
+fi
 
 # MARK: - Pyenv/Rbenv
 
 # eval "$(pyenv init --path)"
-eval "$(rbenv init - zsh)"
+if command -v rbenv >/dev/null 2>&1; then
+  eval "$(rbenv init - zsh)"
+fi
 
 # MARK: - Locales
 
@@ -109,7 +136,9 @@ bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 
 # ZSH custom plugins path
-FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/share/zsh/site-functions" ]; then
+  FPATH="$HOMEBREW_PREFIX/share/zsh/site-functions:${FPATH}"
+fi
 [ -f ~/.zcompdump ] && rm -f ~/.zcompdump
 autoload -Uz compinit && compinit
 
@@ -185,9 +214,11 @@ alias xopen="open *.xcworkspace 2>/dev/null || open *.xcodeproj"
 
 # MARK: - OpenSSL para Homebrew
 
-export LDFLAGS="-L/opt/homebrew/opt/openssl@3/lib"
-export CPPFLAGS="-I/opt/homebrew/opt/openssl@3/include"
-export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl@3/lib/pkgconfig"
+if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/openssl@3" ]; then
+  export LDFLAGS="-L$HOMEBREW_PREFIX/opt/openssl@3/lib"
+  export CPPFLAGS="-I$HOMEBREW_PREFIX/opt/openssl@3/include"
+  export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/opt/openssl@3/lib/pkgconfig"
+fi
 
 # disable xcode indexing while building
 export XCODE_DISABLE_BACKGROUND_TASKS=NO  # Desabilita indexing enquanto builda
@@ -207,7 +238,9 @@ ssh-add --apple-use-keychain -K ~/.ssh/id_ed25519 > /dev/null 2>&1
 
 # MARK: - Mise (Ferramenta multi-runtime)
 
-eval "$(/Users/pruypugliesi/.local/bin/mise activate zsh)"
+if [ -x "$HOME/.local/bin/mise" ]; then
+  eval "$("$HOME/.local/bin/mise" activate zsh)"
+fi
 
 # MARK: - GitHub Copilot CLI
 
@@ -240,7 +273,7 @@ fi
 # Pinterest aliases
 
 # Added by Windsurf
-export PATH="/Users/pruypugliesi/.codeium/windsurf/bin:$PATH"
+export PATH="$HOME/.codeium/windsurf/bin:$PATH"
 # Trying xcode fixes
 
 # ============================================================================
