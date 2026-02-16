@@ -8,9 +8,12 @@ export LC_ALL=pt_BR.UTF-8
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 CACHE_FILE="${CACHE_DIR}/weather.txt"
 LOCATION_FILE_DEFAULT="$HOME/.tmux/weather_location"
-FORMAT_DEFAULT='%m+|+%S+-+%s+|+%p+|+%C+%t+%l'
+FORMAT_DEFAULT='%m+|+%S+-+%s+|+%p+|+%C+%t'
 LANG="${TMUX_WEATHER_LANG:-pt-br}"
 TTL="${TMUX_WEATHER_CACHE_SECONDS:-600}"
+DEFAULT_LOCATION="${TMUX_WEATHER_DEFAULT_LOCATION:-}"
+CONNECT_TIMEOUT="${TMUX_WEATHER_CONNECT_TIMEOUT:-5}"
+MAX_TIME="${TMUX_WEATHER_MAX_TIME:-10}"
 
 mkdir -p "${CACHE_DIR}"
 
@@ -59,21 +62,35 @@ if [ -z "${LOCATION}" ] && [ -f "${LOCATION_FILE}" ]; then
   LOCATION="$(trim "$(cat "${LOCATION_FILE}")")"
 fi
 
+if [ -z "${LOCATION}" ] && [ -n "${DEFAULT_LOCATION}" ]; then
+  LOCATION="${DEFAULT_LOCATION}"
+fi
+
 LOCATION="${LOCATION//  / }"
 LOCATION_ENCODED="${LOCATION// /+}"
+LOCATION_LABEL="${LOCATION}"
 
 FORMAT_ENCODED="${TMUX_WEATHER_FORMAT:-${FORMAT_DEFAULT}}"
 
 build_url() {
-  local path="https://wttr.in/"
+  local scheme="${1:-https}"
+  local path="${scheme}://wttr.in/"
   if [ -n "${LOCATION_ENCODED}" ]; then
     path+="${LOCATION_ENCODED}"
   fi
   printf '%s?format=%s&lang=%s&m' "${path}" "${FORMAT_ENCODED}" "${LANG}"
 }
 
+curl_weather() {
+  curl -fsSL --connect-timeout "${CONNECT_TIMEOUT}" --max-time "${MAX_TIME}" --retry 1 --retry-delay 1 --http1.1 "$1"
+}
+
 fetch_weather() {
-  curl -fsSL "$(build_url)"
+  if curl_weather "$(build_url https)"; then
+    return 0
+  fi
+
+  curl_weather "$(build_url http)"
 }
 
 update_cache() {
@@ -91,7 +108,12 @@ if needs_refresh; then
 fi
 
 if [ -s "${CACHE_FILE}" ]; then
-  cat "${CACHE_FILE}"
+  WEATHER_TEXT="$(<"${CACHE_FILE}")"
+  if [ -n "${LOCATION_LABEL}" ]; then
+    printf '%s %s\n' "${WEATHER_TEXT}" "${LOCATION_LABEL}"
+  else
+    printf '%s\n' "${WEATHER_TEXT}"
+  fi
 else
   echo " weather indisponível"
 fi
