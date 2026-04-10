@@ -51,7 +51,7 @@ path=(
 
 # ── Locale ────────────────────────────────────────────────────────────────────
 export LC_NUMERIC="en_US.UTF-8"   # LANG/LC_ALL definidos em .zshenv
-export TERM="xterm-256color"
+[[ -z "$TMUX" ]] && export TERM="xterm-256color"
 {{ if eq .chezmoi.os "darwin" -}}
 export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
 {{ end -}}

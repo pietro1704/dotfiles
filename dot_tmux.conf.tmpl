@@ -10,8 +10,6 @@ set-option -g set-titles-string '#T'
 bind -n M-Left  send-keys "\eb"
 bind -n M-Right send-keys "\ef"
 
-set -g allow-rename on
-
 set -g default-terminal "tmux-256color"
 {{ if eq .chezmoi.os "darwin" -}}
 set -as terminal-overrides ",alacritty:RGB"
@@ -40,8 +38,8 @@ bind -T copy-mode-vi v send -X begin-selection
 bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "pbcopy"
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
 {{ else -}}
-bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "xclip -selection clipboard"
-bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "xclip -selection clipboard"
+bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "wl-copy"
+bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "wl-copy"
 {{ end -}}
 bind P paste-buffer
 
@@ -71,7 +69,6 @@ set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'tmux-plugins/tmux-continuum'
 set -g @plugin 'tmux-plugins/tmux-logging'
 set -g @plugin 'tmux-plugins/tmux-cowboy'
-set -g @plugin 'tmux-plugins/tmux-copycat'
 set -g @plugin 'tmux-plugins/tmux-open'
 set -g @plugin 'tmux-plugins/tmux-urlview'
 set -g @plugin 'laktak/extrakto'
@@ -111,4 +108,4 @@ set -g window-status-format         "#[fg=#6c7086] #I #W "
 set -g window-status-current-format "#[fg=#cdd6f4,bold] #I #W "
 
 # Initialize TPM (keep at bottom)
-run -b '~/.tmux/plugins/tpm/tpm'
+run '~/.tmux/plugins/tpm/tpm'

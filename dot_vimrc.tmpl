@@ -42,11 +42,11 @@ set tabstop=2
 set softtabstop=2
 set shiftwidth=2
 set expandtab
-set shortmess=a
+set shortmess+=c
 set smarttab
 set smartindent
 
-set spell
+autocmd FileType markdown,text,gitcommit setlocal spell
 set ruler
 set gp=git\ grep\ -n
 
