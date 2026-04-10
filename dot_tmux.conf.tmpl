@@ -1,0 +1,114 @@
+set-environment -g TMUX_PLUGIN_MANAGER_PATH "~/.tmux/plugins/"
+
+set-option -g allow-passthrough on
+
+# window title
+set-option -g set-titles on
+set-option -g set-titles-string '#T'
+
+# word navigation (M-Left/Right)
+bind -n M-Left  send-keys "\eb"
+bind -n M-Right send-keys "\ef"
+
+set -g allow-rename on
+
+set -g default-terminal "tmux-256color"
+{{ if eq .chezmoi.os "darwin" -}}
+set -as terminal-overrides ",alacritty:RGB"
+{{ else -}}
+set -as terminal-overrides ",alacritty:RGB"
+{{ end -}}
+
+# unicode underline
+set -as terminal-overrides ',*:Smulx=\E[4::%p1%dm'
+set -as terminal-overrides ',*:Setulc=\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m'
+
+# open new panes/windows in current dir
+bind c new-window      -c "#{pane_current_path}"
+bind '"' split-window  -c "#{pane_current_path}"
+bind % split-window -h -c "#{pane_current_path}"
+
+set -g mouse on
+set -g base-index 1
+set -g history-limit 100000
+set -sg repeat-time 600
+
+setw -g mode-keys vi
+
+bind -T copy-mode-vi v send -X begin-selection
+{{ if eq .chezmoi.os "darwin" -}}
+bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "pbcopy"
+bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
+{{ else -}}
+bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "xclip -selection clipboard"
+bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "xclip -selection clipboard"
+{{ end -}}
+bind P paste-buffer
+
+bind r source-file ~/.tmux.conf \; display-message "~/.tmux.conf reloaded."
+
+set-option -a terminal-features 'xterm-256color:RGB'
+
+# activity
+setw -g monitor-activity on
+set  -g visual-activity on
+
+# re-number windows when one is closed
+set -g renumber-windows on
+
+# neovim cursor shape integration
+set -g -a terminal-overrides ',*:Ss=\E[%p1%d q:Se=\E[2 q'
+
+set-window-option -g pane-base-index 1
+set-option -g allow-rename off
+
+# ── Plugins ───────────────────────────────────────────────────────────────────
+set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'catppuccin/tmux'
+set -g @plugin 'tmux-plugins/tmux-cpu'
+set -g @plugin 'xamut/tmux-weather'
+set -g @plugin 'tmux-plugins/tmux-sensible'
+set -g @plugin 'tmux-plugins/tmux-continuum'
+set -g @plugin 'tmux-plugins/tmux-logging'
+set -g @plugin 'tmux-plugins/tmux-cowboy'
+set -g @plugin 'tmux-plugins/tmux-copycat'
+set -g @plugin 'tmux-plugins/tmux-open'
+set -g @plugin 'tmux-plugins/tmux-urlview'
+set -g @plugin 'laktak/extrakto'
+set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @plugin 'tmux-plugins/tmux-yank'
+
+set -g @resurrect-strategy-vim  'session'
+set -g @resurrect-strategy-nvim 'session'
+
+# ── Catppuccin ────────────────────────────────────────────────────────────────
+set -g @catppuccin_flavor "mocha"
+set -g @catppuccin_status_left_separator  ""
+set -g @catppuccin_status_middle_separator ""
+set -g @catppuccin_status_right_separator " "
+set -g @catppuccin_status_connect_separator "no"
+
+set -g @catppuccin_status_modules_left  "session"
+set -g @catppuccin_status_modules_right "cpu uptime weather"
+run ~/.tmux/plugins/tmux/catppuccin.tmux
+
+# ── Weather (pt-BR, Santos) ───────────────────────────────────────────────────
+set-environment -g TMUX_WEATHER_LOCATION "Santos,BR"
+set -g @catppuccin_cpu_text     " #(~/.tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh | sed 's/[.]0%$/%/')"
+set -g @catppuccin_weather_text " #(~/.tmux/scripts/weather-cached.sh)"
+
+# ── Status bar ────────────────────────────────────────────────────────────────
+set -g status-position bottom
+set -g status-style "bg=#1e1e2e"
+set -g status-right-length 250
+set -g status-left-length  150
+set -g status-interval 5
+
+set -g status-left  "#{E:@catppuccin_status_session}"
+set -g status-right "#{E:@catppuccin_status_cpu} #{E:@catppuccin_status_uptime} #{E:@catppuccin_status_weather}"
+
+set -g window-status-format         "#[fg=#6c7086] #I #W "
+set -g window-status-current-format "#[fg=#cdd6f4,bold] #I #W "
+
+# Initialize TPM (keep at bottom)
+run -b '~/.tmux/plugins/tpm/tpm'

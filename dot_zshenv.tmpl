@@ -1,0 +1,16 @@
+# Carregado em TODOS os contextos zsh (interativo, não-interativo, scripts)
+# Mantenha leve — só o essencial
+
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_STATE_HOME="$HOME/.local/state"
+
+{{ if eq .chezmoi.os "linux" -}}
+export LANG="pt_BR.UTF-8"
+export LC_ALL="pt_BR.UTF-8"
+{{ else -}}
+export LANG="en_US.UTF-8"
+export LC_ALL="en_US.UTF-8"
+{{ end -}}
+export LC_NUMERIC="en_US.UTF-8"

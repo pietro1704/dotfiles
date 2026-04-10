@@ -1,0 +1,145 @@
+syntax on
+set nocompatible
+command! MakeTags !ctags -R .
+
+set number
+set mouse=a
+set cursorline
+
+let g:netrw_banner=0
+let g:netrw_browse_split=4
+let g:netrw_altv=1
+let g:netrw_liststyle=3
+let g:netrw_list_hide=netrw_gitignore#Hide()
+let g:netrw_list_hide.=',\(^\|\s\s\)\zs.\S\+'
+
+cnoreabbrev f find
+
+set hidden
+set incsearch
+set ignorecase
+set smartcase
+set scrolloff=8
+set colorcolumn=100
+set signcolumn=yes
+set cmdheight=2
+set updatetime=100
+set encoding=utf-8
+set nobackup
+set nowritebackup
+set splitright
+set splitbelow
+set autoread
+filetype plugin indent on
+
+{{ if eq .chezmoi.os "darwin" -}}
+set clipboard=unnamed
+{{ else -}}
+set clipboard=unnamedplus
+{{ end -}}
+
+set tabstop=2
+set softtabstop=2
+set shiftwidth=2
+set expandtab
+set shortmess=a
+set smarttab
+set smartindent
+
+set spell
+set ruler
+set gp=git\ grep\ -n
+
+set path+=**
+set wildmenu
+set wildignore+=**/node_modules/**
+set wildignore+=*.exe,*.dll,*.pdb
+
+" GUI font (macOS)
+{{ if eq .chezmoi.os "darwin" -}}
+set guifont=MesloLGS\ NF:h14
+{{ end -}}
+set guioptions-=m
+set guioptions-=T
+set guioptions-=r
+
+" ── LSP ───────────────────────────────────────────────────────────────────────
+function! s:on_lsp_buffer_enabled() abort
+    setlocal omnifunc=lsp#complete
+    setlocal signcolumn=yes
+    nmap <buffer> gi <plug>(lsp-definition)
+    nmap <buffer> gd <plug>(lsp-declaration)
+    nmap <buffer> gr <plug>(lsp-references)
+    nmap <buffer> gl <plug>(lsp-document-diagnostics)
+    nmap <buffer> <f2> <plug>(lsp-rename)
+    nmap <buffer> <f3> <plug>(lsp-hover)
+endfunction
+
+augroup lsp_install
+    au!
+    autocmd User lsp_buffer_enabled call s:on_lsp_buffer_enabled()
+augroup END
+
+packadd! matchit
+
+" ── Plugins ───────────────────────────────────────────────────────────────────
+call plug#begin()
+
+Plug 'prabirshrestha/vim-lsp'
+Plug 'mattn/vim-lsp-settings'
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf.vim'
+Plug 'preservim/nerdtree'
+Plug 'rust-lang/rust.vim'
+Plug 'sbdchd/neoformat'
+Plug 'tpope/vim-commentary'
+Plug 'tiagofumo/vim-nerdtree-syntax-highlight'
+Plug 'Xuyuanp/nerdtree-git-plugin'
+Plug 'vim-airline/vim-airline'
+Plug 'vim-airline/vim-airline-themes'
+Plug 'ryanoasis/vim-devicons'
+Plug 'sheerun/vim-polyglot'
+Plug 'honza/vim-snippets'
+Plug 'jiangmiao/auto-pairs'
+
+if (has("nvim"))
+  Plug 'nvim-lua/plenary.nvim'
+  Plug 'nvim-telescope/telescope.nvim'
+endif
+
+call plug#end()
+
+" ── Mappings ──────────────────────────────────────────────────────────────────
+noremap <Leader>y "*y
+noremap <Leader>p "*p
+noremap <Leader>Y "+y
+noremap <Leader>P "+p
+
+nmap <C-o> :NERDTreeToggle<CR>
+nmap <C-i> :Neoformat<CR>
+
+nmap te :tabe<CR>
+nmap ty :bn<CR>
+nmap tr :bp<CR>
+nmap td :bd<CR>
+nmap th :split<CR>
+nmap tv :vsplit<CR>
+nmap tt :q<CR>
+nmap tc :!
+
+" TAB completion (pumvisible)
+function! s:check_back_space() abort
+  let col = col('.') - 1
+  return !col || getline('.')[col - 1]  =~ '\s'
+endfunction
+
+inoremap <silent><expr> <TAB>
+  \ pumvisible() ? "\<C-n>" :
+  \ <SID>check_back_space() ? "\<TAB>" :
+  \ "\<TAB>"
+
+if has("patch-8.1.1564")
+  set signcolumn=number
+else
+  set signcolumn=no
+endif

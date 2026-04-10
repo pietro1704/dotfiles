@@ -1,0 +1,307 @@
+# ── Powerlevel10k instant prompt (deve ficar no topo) ────────────────────────
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# ── PATH (typeset -U remove duplicatas automaticamente) ──────────────────────
+typeset -U path
+{{ if eq .chezmoi.os "darwin" -}}
+if command -v brew >/dev/null 2>&1; then
+  HOMEBREW_PREFIX="$(brew --prefix)"
+elif [ -d "/opt/homebrew" ]; then
+  HOMEBREW_PREFIX="/opt/homebrew"
+elif [ -d "/usr/local" ]; then
+  HOMEBREW_PREFIX="/usr/local"
+else
+  HOMEBREW_PREFIX=""
+fi
+
+path=(
+  $HOME/.local/bin
+  $HOME/bin
+  ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/bin}
+  ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/sbin}
+  $HOME/.ghcup/bin
+  $HOME/.emacs.d/bin
+  /usr/local/bin
+  /usr/local/sbin
+  /bin
+  $path
+)
+
+# Ruby via Homebrew
+if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/ruby/bin" ]; then
+  path=("$HOMEBREW_PREFIX/opt/ruby/bin" $path)
+  GEM_DIR="$(gem environment gemdir 2>/dev/null)"
+  [ -n "$GEM_DIR" ] && [ -d "$GEM_DIR/bin" ] && path=("$GEM_DIR/bin" $path)
+fi
+{{ else -}}
+path=(
+  $HOME/.local/bin
+  $HOME/bin
+  $HOME/.ghcup/bin
+  $HOME/.emacs.d/bin
+  /usr/local/bin
+  /usr/local/sbin
+  /usr/bin
+  /bin
+  $path
+)
+{{ end -}}
+
+# ── Locale ────────────────────────────────────────────────────────────────────
+export LC_NUMERIC="en_US.UTF-8"   # LANG/LC_ALL definidos em .zshenv
+export TERM="xterm-256color"
+{{ if eq .chezmoi.os "darwin" -}}
+export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
+{{ end -}}
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+if [[ -n $SSH_CONNECTION ]]; then
+  export EDITOR="vim"
+else
+  export EDITOR="lvim"
+fi
+export VISUAL="$EDITOR"
+
+# ── Histórico ─────────────────────────────────────────────────────────────────
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_VERIFY SHARE_HISTORY EXTENDED_HISTORY
+
+# ── Opções Zsh ────────────────────────────────────────────────────────────────
+setopt AUTO_CD NO_BEEP GLOB_DOTS
+
+# ── Oh-My-Zsh ─────────────────────────────────────────────────────────────────
+ZSH="$HOME/.oh-my-zsh"
+DISABLE_UPDATE_PROMPT="true"
+ENABLE_CORRECTION="true"
+ZSH_COMPDUMP="${HOME}/.zcompdump-${ZSH_VERSION}"
+
+# FPATH antes de carregar OMZ
+{{ if eq .chezmoi.os "darwin" -}}
+[ -n "$HOMEBREW_PREFIX" ] && FPATH="$HOMEBREW_PREFIX/share/zsh/site-functions:${FPATH}"
+{{ else -}}
+FPATH="/usr/share/zsh/site-functions:${FPATH}"
+{{ end -}}
+
+plugins=(
+  git
+  ruby
+  rails
+  z
+  sudo
+  colored-man-pages
+  extract
+{{ if eq .chezmoi.os "linux" -}}
+  archlinux
+{{ end -}}
+)
+
+source "$ZSH/oh-my-zsh.sh"
+
+# ── Completions ───────────────────────────────────────────────────────────────
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' rehash true
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "$HOME/.zsh_cache"
+
+# ── Keybindings (modo emacs) ─────────────────────────────────────────────────
+bindkey -e
+bindkey '^[[A'  history-beginning-search-backward
+bindkey '^[[B'  history-beginning-search-forward
+bindkey '^P'    history-beginning-search-backward
+bindkey '^N'    history-beginning-search-forward
+bindkey '^R'    history-incremental-search-backward
+bindkey '^[[H'  beginning-of-line
+bindkey '^[[F'  end-of-line
+bindkey '^[[3~' delete-char
+
+# ── Aliases — navegação ───────────────────────────────────────────────────────
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+
+if command -v eza &>/dev/null; then
+  alias ls='eza --icons'
+  alias ll='eza -lh --icons --git'
+  alias la='eza -lha --icons --git'
+  alias lt='eza --tree --icons --level=2'
+else
+  alias ll='ls -lh --color=auto'
+  alias la='ls -lha --color=auto'
+  alias l='ls -l --color=auto'
+fi
+
+alias grep='grep --color=auto'
+alias .='source'
+
+# ── Aliases — sistema ─────────────────────────────────────────────────────────
+alias zshs='. ~/.zshrc && clear'
+{{ if eq .chezmoi.os "linux" -}}
+alias updateAll='sudo pacman -Syyu && yay -Syyu && sudo flatpak update && echo "✅ Tudo atualizado!"'
+alias clean='sudo pacman -Rns --noconfirm $(pacman -Qtdq) 2>/dev/null || echo "Nenhum órfão encontrado"'
+alias orphan='pacman -Qtdq'
+alias restartAudio='systemctl --user restart pipewire pipewire-pulse wireplumber'
+alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2>/dev/null | head -1); QT_QPA_PLATFORM=xcb designer'
+{{ else if eq .chezmoi.os "darwin" -}}
+alias updateAll='brew upgrade && brew upgrade --cask --greedy && brew cleanup && omz update'
+alias vim=nvim
+alias ctags='`brew --prefix`/bin/ctags'
+{{ end -}}
+
+# ── Aliases — docker ─────────────────────────────────────────────────────────
+alias dps='docker ps --format "table {{ "{{" }}.Names{{ "}}" }}\t{{ "{{" }}.Status{{ "}}" }}\t{{ "{{" }}.Ports{{ "}}" }}"'
+alias dlog='docker logs -f'
+alias dex='docker exec -it'
+alias dprune='docker system prune -af --volumes'
+alias dimg='docker images --format "table {{ "{{" }}.Repository{{ "}}" }}\t{{ "{{" }}.Tag{{ "}}" }}\t{{ "{{" }}.Size{{ "}}" }}"'
+
+# ── Aliases — rails ──────────────────────────────────────────────────────────
+alias r='./bin/rails'
+alias rc='./bin/rails console'
+alias rs='./bin/rails server'
+alias rr='./bin/rails routes'
+
+# ── Plugins externos ──────────────────────────────────────────────────────────
+{{ if eq .chezmoi.os "darwin" -}}
+[ -n "$HOMEBREW_PREFIX" ] && [ -f "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ] &&
+  source "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+[ -n "$HOMEBREW_PREFIX" ] && [ -f "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ] &&
+  source "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+{{ else -}}
+[[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] &&
+  source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] &&
+  source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+{{ end -}}
+
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#666666"
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+
+# ── FZF ───────────────────────────────────────────────────────────────────────
+{{ if eq .chezmoi.os "linux" -}}
+[[ -f /usr/share/fzf/key-bindings.zsh ]] && source /usr/share/fzf/key-bindings.zsh
+[[ -f /usr/share/fzf/completion.zsh ]]   && source /usr/share/fzf/completion.zsh
+{{ else -}}
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+{{ end -}}
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border --bind ctrl-/:toggle-preview'
+if command -v bat &>/dev/null; then
+  export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :200 {}'"
+fi
+
+# ── Mise (version manager) ────────────────────────────────────────────────────
+export ASDF_DATA_DIR="$HOME/.asdf"
+eval "$($HOME/.local/bin/mise activate zsh)"
+
+# ── Thefuck (lazy: só carrega quando chamado) ─────────────────────────────────
+fuck() {
+  unset -f fuck
+  eval "$(thefuck --alias 2>/dev/null)"
+  fuck "$@"
+}
+
+{{ if eq .chezmoi.os "darwin" -}}
+# ── macOS: SSH Keychain ───────────────────────────────────────────────────────
+ssh-add --apple-use-keychain -K ~/.ssh/id_ed25519 > /dev/null 2>&1
+
+# ── macOS: OpenSSL para gems ──────────────────────────────────────────────────
+if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/openssl@3" ]; then
+  export LDFLAGS="-L$HOMEBREW_PREFIX/opt/openssl@3/lib"
+  export CPPFLAGS="-I$HOMEBREW_PREFIX/opt/openssl@3/include"
+  export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/opt/openssl@3/lib/pkgconfig"
+fi
+
+# ── macOS: Heroku autocomplete ────────────────────────────────────────────────
+HEROKU_AC_ZSH_SETUP_PATH="$HOME/Library/Caches/heroku/autocomplete/zsh_setup"
+[ -f "$HEROKU_AC_ZSH_SETUP_PATH" ] && source "$HEROKU_AC_ZSH_SETUP_PATH"
+
+# ── macOS: Xcode ─────────────────────────────────────────────────────────────
+export IDEBuildOperationMaxNumberOfConcurrentCompileTasks=16
+export IDEBuildOperationMaxNumberOfConcurrentLinkTasks=4
+export CLANG_INDEX_STORE_ENABLE=YES
+export SWIFT_DETERMINISTIC_HASHING=1
+
+xcode-increase-cache() {
+    defaults write com.apple.dt.Xcode IDEModuleCacheSizeInMegabytes -int 20480
+    defaults write com.apple.dt.Xcode IDESwiftCompilationCacheSize -int 20480
+    defaults write com.apple.dt.Xcode EnableModuleCaching -bool YES
+    defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 16
+    defaults write com.apple.dt.Xcode ShowBuildOperationDuration -bool YES
+    defaults write com.apple.dt.Xcode IDEIndexerActivityShowNumericProgress -bool YES
+    defaults write com.apple.dt.Xcode IDEIndexDisable -bool NO
+    defaults write com.apple.dt.Xcode IDEIndexEnableIncrementalIndexing -bool YES
+    echo "Cache aumentado. Reinicie o Xcode."
+}
+
+xcode-optimize() {
+    local DERIVED_DATA_PATH="$HOME/Library/Developer/Xcode/DerivedData"
+    rm -rf "$HOME/Library/Developer/Xcode/DerivedData/ModuleCache.noindex"
+    find "$DERIVED_DATA_PATH" -type d -name "Build" -exec rm -rf {} + 2>/dev/null || true
+    rm -rf "$HOME/Library/Developer/Xcode/UserData/IDEEditorInteractivityHistory"
+    rm -rf "$HOME/Library/Developer/Xcode/UserData/IDEFindNavigatorScopes"
+    rm -rf "$HOME/Library/Caches/com.apple.dt.Xcode"
+    for db in $(find "$DERIVED_DATA_PATH" -name "*.db" -type f 2>/dev/null); do
+        sqlite3 "$db" "VACUUM;" 2>/dev/null || true
+    done
+    sudo purge 2>/dev/null || true
+    echo "Otimizado. Reinicie o Xcode."
+}
+
+xcode-clean() {
+    local DERIVED_DATA_PATH="$HOME/Library/Developer/Xcode/DerivedData"
+    local PINTEREST_DD=$(find "$DERIVED_DATA_PATH" -maxdepth 1 -type d -name "Pinterest-*" 2>/dev/null | head -n 1)
+    [ -z "$PINTEREST_DD" ] && echo "Nenhum DerivedData do Pinterest encontrado" && return 0
+    rm -rf "$PINTEREST_DD/Build" "$PINTEREST_DD/Logs"
+    rm -rf "$DERIVED_DATA_PATH/ModuleCache.noindex"
+    echo "Build/Logs limpos. Index preservado."
+}
+
+xcode-restart() {
+    killall Xcode 2>/dev/null || true
+    sleep 1
+    open -a Xcode
+}
+
+xcode-kill-sourcecontrol() {
+    killall com.apple.dt.Xcode.sourcecontrol.Git 2>/dev/null || true
+}
+
+xcode-deep-clean() {
+    echo -n "Apagar TODO o DerivedData e index? (y/N): "
+    read -r response
+    [[ "$response" =~ ^[Yy]$ ]] || { echo "Cancelado."; return; }
+    rm -rf ~/Library/Developer/Xcode/DerivedData
+    rm -rf ~/Library/Caches/com.apple.dt.Xcode
+    echo "Deep clean completo. Reinicie o Xcode."
+}
+
+xcode-status() {
+    echo "Module cache: $(defaults read com.apple.dt.Xcode IDEModuleCacheSizeInMegabytes 2>/dev/null || echo 'default')MB"
+    echo "Swift cache:  $(defaults read com.apple.dt.Xcode IDESwiftCompilationCacheSize 2>/dev/null || echo 'default')MB"
+    echo "DerivedData:  $(du -sh ~/Library/Developer/Xcode/DerivedData 2>/dev/null | cut -f1)"
+    echo "CPU cores:    $(sysctl -n hw.ncpu)"
+    echo "Index disabled: $(defaults read com.apple.dt.Xcode IDEIndexDisable 2>/dev/null || echo 'NO')"
+}
+
+alias xc-opt='xcode-optimize'
+alias xc-clean='xcode-clean'
+alias xc-cache='xcode-increase-cache'
+alias xc-restart='xcode-restart'
+alias xc-status='xcode-status'
+alias xc-kill='xcode-kill-sourcecontrol'
+alias xc-nuke='xcode-deep-clean'
+{{ end -}}
+
+# ── Powerlevel10k theme ───────────────────────────────────────────────────────
+{{ if eq .chezmoi.os "linux" -}}
+source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
+{{ else -}}
+[ -n "$HOMEBREW_PREFIX" ] && source "$HOMEBREW_PREFIX/share/powerlevel10k/powerlevel10k.zsh-theme"
+{{ end -}}
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
