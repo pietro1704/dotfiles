@@ -51,8 +51,12 @@ history = 10000
 style = { shape = "Block", blinking = "On" }
 
 [terminal.shell]
-program = "/bin/zsh"
-args    = ["-l", "-c", "tmux new -A"]
+{{ if eq .chezmoi.os "darwin" -}}
+program = "/usr/local/bin/tmux"
+{{ else -}}
+program = "/usr/bin/tmux"
+{{ end -}}
+args    = ["new-session", "-A", "-s", "main"]
 
 [[keyboard.bindings]]
 chars = "\u001B\u007F"
