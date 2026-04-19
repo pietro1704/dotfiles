@@ -23,8 +23,6 @@ path=(
   ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/sbin}
   $HOME/.ghcup/bin
   $HOME/.emacs.d/bin
-  /usr/local/bin
-  /usr/local/sbin
   /bin
   $path
 )
@@ -150,7 +148,7 @@ alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2
 {{ else if eq .chezmoi.os "darwin" -}}
 alias updateAll='brew upgrade && brew upgrade --cask --greedy && brew cleanup && omz update'
 alias vim=nvim
-alias ctags='`brew --prefix`/bin/ctags'
+[ -n "$HOMEBREW_PREFIX" ] && alias ctags="$HOMEBREW_PREFIX/bin/ctags"
 {{ end -}}
 
 # ── Aliases — docker ─────────────────────────────────────────────────────────
