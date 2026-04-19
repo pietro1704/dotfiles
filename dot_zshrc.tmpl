@@ -197,7 +197,7 @@ fi
 
 # ── Mise (version manager) ────────────────────────────────────────────────────
 export ASDF_DATA_DIR="$HOME/.asdf"
-eval "$($HOME/.local/bin/mise activate zsh)"
+command -v mise >/dev/null 2>&1 && eval "$(mise activate zsh)"
 
 # ── Thefuck (lazy: só carrega quando chamado) ─────────────────────────────────
 fuck() {
