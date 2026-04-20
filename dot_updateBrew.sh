@@ -1,2 +1,2 @@
-#!bin/zsh
+#!/usr/bin/env zsh
 brew upgrade && brew upgrade --greedy --cask && brew cleanup

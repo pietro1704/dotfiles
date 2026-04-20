@@ -290,7 +290,7 @@ fuck() {
 
 {{ if eq .chezmoi.os "darwin" -}}
 # ── macOS: SSH Keychain ───────────────────────────────────────────────────────
-ssh-add --apple-use-keychain -K ~/.ssh/id_ed25519 > /dev/null 2>&1
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519 > /dev/null 2>&1
 
 # ── macOS: OpenSSL para gems ──────────────────────────────────────────────────
 if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/openssl@3" ]; then

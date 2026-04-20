@@ -846,6 +846,123 @@ _mx_cache_clean_tuist_manifest_orphans() {
 # ou .swiftmodule. Quando build.db corrompe a meio de escrever, fica este estado zombie:
 # próximas builds falham infinitamente com "header 'X-Swift.h' not found".
 # Retorna lista de paths de frameworks a apagar (um por linha).
+# Detecta DerivedData duplicados para o mesmo workspace e remove os mais antigos
+# (preserva o de maior mtime). Causa nº 1 de re-indexação total e "falsos erros"
+# em cascata: Xcode oscila entre 2+ Pinterest-<hash> conforme abres
+# Pinterest.xcworkspace vs PinterestDevelopment.xcworkspace vs tuist regen —
+# cada flip invalida Index.noindex inteiro, SourceKit mostra erros fantasma até
+# reindexar (pode demorar horas num repo de 13 GB de index).
+_mx_dd_dedupe() {
+    local base="$HOME/Library/Developer/Xcode/DerivedData"
+    [[ -d "$base" ]] || return 0
+    local dd newest_mtime=0 newest=""
+    local -a pin_dds
+    while IFS= read -r dd; do
+        [[ -z "$dd" ]] && continue
+        pin_dds+=("$dd")
+    done < <(find "$base" -maxdepth 1 -type d -name 'Pinterest-*' 2>/dev/null)
+
+    local n=${#pin_dds[@]}
+    if (( n <= 1 )); then
+        echo "ℹ️  mxc dd-dedupe: $n Pinterest-* DerivedData. Nada a fazer."
+        return 0
+    fi
+
+    # Encontra o mais recente por mtime.
+    for dd in "${pin_dds[@]}"; do
+        local m
+        m=$(stat -f %m "$dd" 2>/dev/null)
+        [[ -z "$m" ]] && m=0
+        if (( m > newest_mtime )); then
+            newest_mtime=$m
+            newest=$dd
+        fi
+    done
+
+    echo "🔍 mxc dd-dedupe: $n Pinterest-* DerivedData encontrados."
+    echo "   manter: $(basename "$newest") ($(du -sh "$newest" 2>/dev/null | cut -f1))"
+    local victim removed=0 freed_total=0
+    for dd in "${pin_dds[@]}"; do
+        [[ "$dd" == "$newest" ]] && continue
+        victim=$dd
+        local size_h size_b
+        size_h=$(du -sh "$victim" 2>/dev/null | cut -f1)
+        size_b=$(du -sk "$victim" 2>/dev/null | awk '{print $1}')
+        echo "   remover: $(basename "$victim") ($size_h)"
+        rm -rf "$victim" 2>/dev/null
+        removed=$((removed+1))
+        freed_total=$((freed_total + ${size_b:-0}))
+    done
+    local freed_gb
+    freed_gb=$(awk -v k=$freed_total 'BEGIN{printf "%.1f", k/1024/1024}')
+    echo "✅ mxc dd-dedupe: $removed duplicado(s) removido(s), ${freed_gb} GB libertados."
+    echo "   Abre SÓ um workspace (preferencialmente PinterestDevelopment.xcworkspace)"
+    echo "   para evitar recriar duplicados."
+}
+
+# Reset SÓ do index-store (Index.noindex) sem tocar no build. Usa quando:
+#   - Xcode fica eternamente "Indexing" / "Processing files"
+#   - SourceKit mostra erros vermelhos mas Cmd+B compila OK (red lines fantasma)
+#   - autocomplete quebrado, jump-to-definition falha
+# Preserva: Build/ (products + intermediates + swiftmodules), ModuleCache,
+# SourcePackages, Manifests. Re-index demora minutos (não horas) porque os
+# .swiftmodule já existem e o IndexStoresByPath é reconstruído a partir deles.
+_mx_cache_reset_index() {
+    echo "🔧 mxc index-reset: apagar Index.noindex (mantém Build/ModuleCache/SourcePackages)…"
+    local dd count=0 freed_kb=0
+    while IFS= read -r dd; do
+        [[ -z "$dd" ]] && continue
+        if [[ -d "$dd/Index.noindex" ]]; then
+            local sz
+            sz=$(du -sk "$dd/Index.noindex" 2>/dev/null | awk '{print $1}')
+            freed_kb=$((freed_kb + ${sz:-0}))
+            rm -rf "$dd/Index.noindex" 2>/dev/null
+            echo "   ✓ $(basename "$dd") — Index.noindex apagado"
+            count=$((count+1))
+        fi
+    done < <(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' 2>/dev/null)
+
+    if (( count == 0 )); then
+        echo "ℹ️  nenhum Index.noindex encontrado."
+        return 0
+    fi
+    local freed_gb
+    freed_gb=$(awk -v k=$freed_kb 'BEGIN{printf "%.1f", k/1024/1024}')
+    echo "✅ mxc index-reset: $count workspace(s), ${freed_gb} GB libertados."
+    echo "   Próximo Cmd+B é normal; index popula em background em poucos minutos."
+}
+
+# Aplica defaults do Xcode que reduzem falsos positivos do editor.
+# Chamado uma vez manualmente (mxc xcprefs) ou implícito via `mxc doctor --fix`.
+# Nota: IDEIndexDisable=YES **não** desliga o index — só desliga "live issues"
+# (erros em tempo real enquanto escreves). Build issues (Cmd+B) continuam a
+# aparecer. Isto é a cura real para o 90% dos falsos-erros em monorepos.
+_mx_apply_xcode_prefs() {
+    echo "🔧 mxc xcprefs: aplicar defaults que reduzem falsos erros…"
+    # Desliga "Live Issues" (analysis inline enquanto escreves). Cmd+B continua normal.
+    defaults write com.apple.dt.Xcode IDEIndexDisable -bool NO
+    defaults write com.apple.dt.Xcode IDEIndexShowLog -bool NO
+    defaults write com.apple.dt.Xcode IDEIndexEnableBuildArena -bool YES
+    # Prioriza .swiftmodule sobre re-parse quando disponível (menos fantasmas).
+    defaults write com.apple.dt.Xcode IDEIndexerActivityShowNumericProgress -bool YES
+    # Reduz número de targets indexados em paralelo (menos contenção no disco).
+    defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks -int {{ .build_jobs | default 8 }}
+    # Desliga "Show Live Issues" toggle (source of 90% dos falsos vermelhos).
+    defaults write com.apple.dt.Xcode IDEIssueNavigatorShowsLiveIssues -bool NO
+    # Mantém os warnings de build (os que interessam) no Issue Navigator.
+    defaults write com.apple.dt.Xcode IDEIssueNavigatorShowsAllIssues -bool YES
+    echo "✅ mxc xcprefs aplicado. Fecha/reabre o Xcode para pegar."
+    echo "   Para reverter: mxc xcprefs-reset"
+}
+
+_mx_reset_xcode_prefs() {
+    echo "↩️  mxc xcprefs-reset: repor defaults de Live Issues…"
+    defaults delete com.apple.dt.Xcode IDEIssueNavigatorShowsLiveIssues 2>/dev/null
+    defaults delete com.apple.dt.Xcode IDEIndexShowLog 2>/dev/null
+    defaults delete com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 2>/dev/null
+    echo "✅ defaults de Live Issues removidos."
+}
+
 _mx_find_broken_frameworks() {
     local dd="${1:?}"
     local products="$dd/Build/Products"
@@ -1078,6 +1195,10 @@ mxc() {
         ""|status|s) _mx_cache_summary ;;
         trim|t)      _mx_cache_trim ;;
         db|fix)      shift; _mx_cache_fix_build_db "$@" ;;
+        dd-dedupe|dedupe) _mx_dd_dedupe ;;
+        index-reset|index|ir) _mx_cache_reset_index ;;
+        xcprefs)     _mx_apply_xcode_prefs ;;
+        xcprefs-reset) _mx_reset_xcode_prefs ;;
         nuke)        shift; _mx_cache_nuke "$@" ;;
         *)
             cat <<'EOF'
@@ -1091,6 +1212,13 @@ mxc — cache hygiene
   mxc db --deep        + apaga Build/Products + Build/Intermediates.noindex/*.build
                        (quando --deep é preciso: "Could not build module X" persiste após
                        mxc db leve, ou muitos frameworks zombie). Mantém ModuleCache.
+  mxc dd-dedupe        remove Pinterest-<hash> DerivedData duplicados (mantém o mais
+                       recente). Cura "re-indexação total ao trocar de workspace".
+  mxc index-reset      apaga SÓ Index.noindex (mantém Build/ModuleCache). Cura:
+                       "Indexing" eterno, red lines fantasma, autocomplete quebrado.
+  mxc xcprefs          aplica defaults que reduzem falsos erros do editor
+                       (desliga Live Issues, mantém build issues). Fecha/reabre Xcode.
+  mxc xcprefs-reset    reverte mxc xcprefs.
   mxc nuke             apaga TUDO Pinterest-* DD + tuist binaries (confirma)
   mxc nuke --all       + ModuleCache.noindex (rebuild caro)
 
@@ -1185,11 +1313,28 @@ mxd() {
         echo "  Tuist cache:  ✓ ok"
     fi
 
-    local dd_size mc_size
+    local dd_size mc_size idx_size dd_count
     dd_size=$(du -sh ~/Library/Developer/Xcode/DerivedData 2>/dev/null | cut -f1)
     mc_size=$(du -sh ~/Library/Developer/Xcode/DerivedData/ModuleCache.noindex 2>/dev/null | cut -f1)
+    idx_size=$(du -csh ~/Library/Developer/Xcode/DerivedData/Pinterest-*/Index.noindex 2>/dev/null | tail -1 | cut -f1)
+    dd_count=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' 2>/dev/null | wc -l | tr -d ' ')
     echo "  DerivedData:  ${dd_size:-0}"
     echo "  ModuleCache:  ${mc_size:-0}"
+    echo "  Index total:  ${idx_size:-0}"
+    if (( dd_count > 1 )); then
+        echo "  Pinterest-*:  ✗ $dd_count workspaces (DUPLICADOS) → \`mxc dd-dedupe\`"
+        echo "                  flip entre workspaces re-indexa tudo → red lines fantasma"
+    else
+        echo "  Pinterest-*:  ✓ $dd_count workspace"
+    fi
+    # Live Issues toggle (fonte nº1 de falsos erros).
+    local live_issues
+    live_issues=$(defaults read com.apple.dt.Xcode IDEIssueNavigatorShowsLiveIssues 2>/dev/null)
+    if [[ "$live_issues" == "0" ]]; then
+        echo "  Live Issues:  ✓ off (menos falsos vermelhos)"
+    else
+        echo "  Live Issues:  — on (default). \`mxc xcprefs\` desliga → menos falsos erros."
+    fi
     local booted
     booted=$(xcrun simctl list devices booted 2>/dev/null | grep -E "iPhone|iPad" | head -1 | sed 's/^ *//')
     [[ -n "$booted" ]] && echo "  Simulador:    ✓ $booted" || echo "  Simulador:    — nenhum booted (mx liga iPhone 14)"
