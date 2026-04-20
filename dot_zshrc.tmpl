@@ -16,18 +16,30 @@ else
   HOMEBREW_PREFIX=""
 fi
 
+# JDK 17 (Pinterest iOS / Android toolchain)
+[ -d "/usr/local/jdk-17.0.6.jdk/Contents/Home" ] && export JAVA_HOME="/usr/local/jdk-17.0.6.jdk/Contents/Home"
+
+export PYENV_ROOT="$HOME/.pyenv"
+
 path=(
   $HOME/.local/bin
   $HOME/bin
   ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/bin}
   ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/sbin}
+  ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/opt/curl/bin}
+  $PYENV_ROOT/bin
+  ${JAVA_HOME:+$JAVA_HOME/bin}
   $HOME/.ghcup/bin
+  $HOME/.xcodes/1.4.1/bin
   $HOME/.emacs.d/bin
+  $HOME/.codeium/windsurf/bin
+  /Applications/Postgres.app/Contents/Versions/latest/bin
+  /Applications/flutter/bin
   /bin
   $path
 )
 
-# Ruby via Homebrew
+# Ruby via Homebrew (+ gem bin dir)
 if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/ruby/bin" ]; then
   path=("$HOMEBREW_PREFIX/opt/ruby/bin" $path)
   GEM_DIR="$(gem environment gemdir 2>/dev/null)"
@@ -52,13 +64,16 @@ export LC_NUMERIC="en_US.UTF-8"   # LANG/LC_ALL definidos em .zshenv
 [[ -z "$TMUX" ]] && export TERM="xterm-256color"
 {{ if eq .chezmoi.os "darwin" -}}
 export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
+unset OVERRIDE_XCODE
 {{ end -}}
 
 # ── Editor ────────────────────────────────────────────────────────────────────
 if [[ -n $SSH_CONNECTION ]]; then
   export EDITOR="vim"
-else
+elif command -v lvim >/dev/null 2>&1; then
   export EDITOR="lvim"
+else
+  export EDITOR="nvim"
 fi
 export VISUAL="$EDITOR"
 
@@ -72,8 +87,12 @@ setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_VERIFY SHARE_HISTORY EXTENDED_HIS
 setopt AUTO_CD NO_BEEP GLOB_DOTS
 
 # ── Oh-My-Zsh ─────────────────────────────────────────────────────────────────
-ZSH="$HOME/.oh-my-zsh"
+export ZSH="$HOME/.oh-my-zsh"
+export ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
+ZSH_THEME="powerlevel10k/powerlevel10k"
+DISABLE_AUTO_UPDATE="true"
 DISABLE_UPDATE_PROMPT="true"
+DISABLE_UNTRACKED_FILES_DIRTY="true"   # git status rápido em repos grandes (Pinterest)
 ENABLE_CORRECTION="true"
 ZSH_COMPDUMP="${HOME}/.zcompdump-${ZSH_VERSION}"
 
@@ -86,13 +105,18 @@ FPATH="/usr/share/zsh/site-functions:${FPATH}"
 
 plugins=(
   git
-  ruby
-  rails
   z
+  history-substring-search
+{{ if eq .chezmoi.os "darwin" -}}
   sudo
   colored-man-pages
   extract
-{{ if eq .chezmoi.os "linux" -}}
+{{ else -}}
+  ruby
+  rails
+  sudo
+  colored-man-pages
+  extract
   archlinux
 {{ end -}}
 )
@@ -109,8 +133,8 @@ zstyle ':completion:*' cache-path "$HOME/.zsh_cache"
 
 # ── Keybindings (modo emacs) ─────────────────────────────────────────────────
 bindkey -e
-bindkey '^[[A'  history-beginning-search-backward
-bindkey '^[[B'  history-beginning-search-forward
+bindkey '^[[A'  history-substring-search-up
+bindkey '^[[B'  history-substring-search-down
 bindkey '^P'    history-beginning-search-backward
 bindkey '^N'    history-beginning-search-forward
 bindkey '^R'    history-incremental-search-backward
@@ -136,9 +160,10 @@ fi
 
 alias grep='grep --color=auto'
 alias .='source'
+alias reload='source'
+alias zshs='source ~/.zshrc && clear'
 
 # ── Aliases — sistema ─────────────────────────────────────────────────────────
-alias zshs='. ~/.zshrc && clear'
 {{ if eq .chezmoi.os "linux" -}}
 alias updateAll='sudo pacman -Syyu && yay -Syyu && sudo flatpak update && echo "✅ Tudo atualizado!"'
 alias clean='sudo pacman -Rns --noconfirm $(pacman -Qtdq) 2>/dev/null || echo "Nenhum órfão encontrado"'
@@ -149,6 +174,29 @@ alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2
 alias updateAll='brew upgrade && brew upgrade --cask --greedy && brew cleanup && omz update'
 alias vim=nvim
 [ -n "$HOMEBREW_PREFIX" ] && alias ctags="$HOMEBREW_PREFIX/bin/ctags"
+alias shopt='/usr/bin/shopt'
+alias sshLinux='ssh pietro@pietro-linux'
+
+# cleanAllCache — limpa caches de user apps (NÃO ~/Library/Developer/Xcode/DerivedData → usa `mxc`).
+cleanAllCache() {
+    sudo rm -rf \
+        "$HOME/Library/Caches" \
+        "$HOME/Library/Logs" \
+        /private/var/log/asl \
+        "$HOME/Library/Containers/com.apple.mail/Data/Library/Mail Downloads" \
+        /private/var/db/diagnostics \
+        "$HOME/Library/Containers/com.apple.iMovieApp/Data/Library/Caches" \
+        "$HOME/Library/Containers/com.apple.Safari/Data/Library/Caches" \
+        /Library/Logs \
+        "$HOME/Library/Containers/com.apple.iBooksX/Data/Library/Caches" \
+        "$HOME/Library/Application Support/Code/Cache" \
+        "$HOME/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application Support/Slack/Cache" \
+        "$HOME/Library/Application Support/discord/Cache" \
+        "$HOME/Library/Containers/com.apple.mail/Data/Library/Caches" \
+        "$HOME/Library/Containers/com.apple.QuickTimePlayerX/Data/Library/Caches/com.apple.avkit.thumbnailCache" 2>/dev/null
+    sudo dscacheutil -flushcache
+    sudo killall -HUP mDNSResponder
+}
 {{ end -}}
 
 # ── Aliases — docker ─────────────────────────────────────────────────────────
@@ -163,6 +211,12 @@ alias r='./bin/rails'
 alias rc='./bin/rails console'
 alias rs='./bin/rails server'
 alias rr='./bin/rails routes'
+
+# ── Aliases — git ─────────────────────────────────────────────────────────────
+alias gco='git checkout'
+alias gsw='git switch'
+alias gpff='git push -f --no-verify'
+alias gmb="git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short) - %(committerdate:relative) - %(objectname:short) - %(subject)'"
 
 # ── Plugins externos ──────────────────────────────────────────────────────────
 {{ if eq .chezmoi.os "darwin" -}}
@@ -193,9 +247,39 @@ if command -v bat &>/dev/null; then
   export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :200 {}'"
 fi
 
-# ── Mise (version manager) ────────────────────────────────────────────────────
+# ── Mise (version manager) — lazy ─────────────────────────────────────────────
 export ASDF_DATA_DIR="$HOME/.asdf"
-command -v mise >/dev/null 2>&1 && eval "$(mise activate zsh)"
+if [ -d "$HOME/.local/share/mise/shims" ]; then
+  export PATH="$HOME/.local/share/mise/shims:$PATH"
+fi
+mise() {
+  unfunction mise 2>/dev/null
+  eval "$(command mise activate zsh)"
+  mise "$@"
+}
+
+# ── Rbenv — lazy ──────────────────────────────────────────────────────────────
+if command -v rbenv >/dev/null 2>&1; then
+  rbenv() {
+    unfunction rbenv
+    eval "$(command rbenv init - zsh)"
+    rbenv "$@"
+  }
+fi
+
+# ── NVM — lazy ────────────────────────────────────────────────────────────────
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  _lazy_load_nvm() {
+    unfunction nvm node npm npx 2>/dev/null
+    \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+  }
+  nvm()  { _lazy_load_nvm; nvm  "$@"; }
+  node() { _lazy_load_nvm; node "$@"; }
+  npm()  { _lazy_load_nvm; npm  "$@"; }
+  npx()  { _lazy_load_nvm; npx  "$@"; }
+fi
 
 # ── Thefuck (lazy: só carrega quando chamado) ─────────────────────────────────
 fuck() {
@@ -219,87 +303,28 @@ fi
 HEROKU_AC_ZSH_SETUP_PATH="$HOME/Library/Caches/heroku/autocomplete/zsh_setup"
 [ -f "$HEROKU_AC_ZSH_SETUP_PATH" ] && source "$HEROKU_AC_ZSH_SETUP_PATH"
 
-# ── macOS: Xcode ─────────────────────────────────────────────────────────────
-export IDEBuildOperationMaxNumberOfConcurrentCompileTasks=16
-export IDEBuildOperationMaxNumberOfConcurrentLinkTasks=4
-export CLANG_INDEX_STORE_ENABLE=YES
-export SWIFT_DETERMINISTIC_HASHING=1
+# ── macOS: Homebrew performance (M4 Max) ─────────────────────────────────────
+[ -f ~/.homebrew_config ] && source ~/.homebrew_config
 
-xcode-increase-cache() {
-    defaults write com.apple.dt.Xcode IDEModuleCacheSizeInMegabytes -int 20480
-    defaults write com.apple.dt.Xcode IDESwiftCompilationCacheSize -int 20480
-    defaults write com.apple.dt.Xcode EnableModuleCaching -bool YES
-    defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 16
-    defaults write com.apple.dt.Xcode ShowBuildOperationDuration -bool YES
-    defaults write com.apple.dt.Xcode IDEIndexerActivityShowNumericProgress -bool YES
-    defaults write com.apple.dt.Xcode IDEIndexDisable -bool NO
-    defaults write com.apple.dt.Xcode IDEIndexEnableIncrementalIndexing -bool YES
-    echo "Cache aumentado. Reinicie o Xcode."
-}
+# ── macOS: M4 Max build parallelism ──────────────────────────────────────────
+export MAKEFLAGS="-j16"
+export CARGO_BUILD_JOBS=16
+export SWIFT_EXEC_THREADS=16
+export UV_THREADPOOL_SIZE=16
+export TUIST_STATS_OPT_OUT=1
+export CHOKIDAR_USEPOLLING=false
+export WATCHMAN_MAX_DEPTH=10
 
-xcode-optimize() {
-    local DERIVED_DATA_PATH="$HOME/Library/Developer/Xcode/DerivedData"
-    rm -rf "$HOME/Library/Developer/Xcode/DerivedData/ModuleCache.noindex"
-    find "$DERIVED_DATA_PATH" -type d -name "Build" -exec rm -rf {} + 2>/dev/null || true
-    rm -rf "$HOME/Library/Developer/Xcode/UserData/IDEEditorInteractivityHistory"
-    rm -rf "$HOME/Library/Developer/Xcode/UserData/IDEFindNavigatorScopes"
-    rm -rf "$HOME/Library/Caches/com.apple.dt.Xcode"
-    for db in $(find "$DERIVED_DATA_PATH" -name "*.db" -type f 2>/dev/null); do
-        sqlite3 "$db" "VACUUM;" 2>/dev/null || true
-    done
-    sudo purge 2>/dev/null || true
-    echo "Otimizado. Reinicie o Xcode."
-}
-
-xcode-clean() {
-    local DERIVED_DATA_PATH="$HOME/Library/Developer/Xcode/DerivedData"
-    local PINTEREST_DD=$(find "$DERIVED_DATA_PATH" -maxdepth 1 -type d -name "Pinterest-*" 2>/dev/null | head -n 1)
-    [ -z "$PINTEREST_DD" ] && echo "Nenhum DerivedData do Pinterest encontrado" && return 0
-    rm -rf "$PINTEREST_DD/Build" "$PINTEREST_DD/Logs"
-    rm -rf "$DERIVED_DATA_PATH/ModuleCache.noindex"
-    echo "Build/Logs limpos. Index preservado."
-}
-
-xcode-restart() {
-    killall Xcode 2>/dev/null || true
-    sleep 1
-    open -a Xcode
-}
-
-xcode-kill-sourcecontrol() {
-    killall com.apple.dt.Xcode.sourcecontrol.Git 2>/dev/null || true
-}
-
-xcode-deep-clean() {
-    echo -n "Apagar TODO o DerivedData e index? (y/N): "
-    read -r response
-    [[ "$response" =~ ^[Yy]$ ]] || { echo "Cancelado."; return; }
-    rm -rf ~/Library/Developer/Xcode/DerivedData
-    rm -rf ~/Library/Caches/com.apple.dt.Xcode
-    echo "Deep clean completo. Reinicie o Xcode."
-}
-
-xcode-status() {
-    echo "Module cache: $(defaults read com.apple.dt.Xcode IDEModuleCacheSizeInMegabytes 2>/dev/null || echo 'default')MB"
-    echo "Swift cache:  $(defaults read com.apple.dt.Xcode IDESwiftCompilationCacheSize 2>/dev/null || echo 'default')MB"
-    echo "DerivedData:  $(du -sh ~/Library/Developer/Xcode/DerivedData 2>/dev/null | cut -f1)"
-    echo "CPU cores:    $(sysctl -n hw.ncpu)"
-    echo "Index disabled: $(defaults read com.apple.dt.Xcode IDEIndexDisable 2>/dev/null || echo 'NO')"
-}
-
-alias xc-opt='xcode-optimize'
-alias xc-clean='xcode-clean'
-alias xc-cache='xcode-increase-cache'
-alias xc-restart='xcode-restart'
-alias xc-status='xcode-status'
-alias xc-kill='xcode-kill-sourcecontrol'
-alias xc-nuke='xcode-deep-clean'
+# ── macOS: Pinterest iOS workflow (mx/mxa/mxw/mxc/mxd/mxs/fastbuild/kx/kxd) ──
+# Bloco extenso — separado em ~/.zshrc.d/pinterest.zsh (também gerido pelo chezmoi).
+[ -f "$HOME/.zshrc.d/pinterest.zsh" ] && source "$HOME/.zshrc.d/pinterest.zsh"
 {{ end -}}
 
 # ── Powerlevel10k theme ───────────────────────────────────────────────────────
+# darwin: OMZ carrega via ZSH_THEME="powerlevel10k/powerlevel10k" (custom/themes). Sem source extra.
 {{ if eq .chezmoi.os "linux" -}}
-source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
-{{ else -}}
-[ -n "$HOMEBREW_PREFIX" ] && source "$HOMEBREW_PREFIX/share/powerlevel10k/powerlevel10k.zsh-theme"
+# Linux: tema vem do pacote zsh-theme-powerlevel10k (fora do OMZ).
+[ -f /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme ] &&
+  source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
 {{ end -}}
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh

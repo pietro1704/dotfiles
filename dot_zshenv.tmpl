@@ -14,3 +14,10 @@ export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 {{ end -}}
 export LC_NUMERIC="en_US.UTF-8"
+
+{{ if eq .chezmoi.os "darwin" -}}
+# macOS: evita "too many open files" em builds grandes (Xcode/SPM)
+ulimit -n 65536 2>/dev/null
+# Evita crash de fork em Ruby/scripts que tocam em Obj-C runtime
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+{{ end -}}
