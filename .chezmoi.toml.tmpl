@@ -1,0 +1,31 @@
+{{/* Gerado por `chezmoi init` → ~/.config/chezmoi/chezmoi.toml (local, NÃO versionado). */ -}}
+{{/* Detecta perfil do host automaticamente; podes override com CHEZMOI_PROFILE env var. */ -}}
+{{- $hostname := .chezmoi.hostname -}}
+{{- $profile := env "CHEZMOI_PROFILE" -}}
+{{- if eq $profile "" -}}
+  {{- if or (hasSuffix ".pinadmin.com" $hostname) (hasPrefix "pruypugliesi-" $hostname) -}}
+    {{- $profile = "work" -}}
+  {{- else if eq .chezmoi.os "linux" -}}
+    {{- $profile = "arch" -}}
+  {{- else -}}
+    {{- $profile = "personal" -}}
+  {{- end -}}
+{{- end -}}
+{{/* Build jobs default por perfil; override exportando CHEZMOI_BUILD_JOBS. */ -}}
+{{- $buildJobs := env "CHEZMOI_BUILD_JOBS" -}}
+{{- if eq $buildJobs "" -}}
+  {{- if eq $profile "work" -}}{{- $buildJobs = "16" -}}
+  {{- else if eq $profile "arch" -}}{{- $buildJobs = "8" -}}
+  {{- else -}}{{- $buildJobs = "4" -}}
+  {{- end -}}
+{{- end -}}
+
+[data]
+    profile = {{ $profile | quote }}
+    build_jobs = {{ $buildJobs }}
+    name = "Pietro Pugliesi"
+{{- if eq $profile "work" }}
+    email = "pruypugliesi@pinterest.com"
+{{- else }}
+    email = "pietropugliesi@icloud.com"
+{{- end }}

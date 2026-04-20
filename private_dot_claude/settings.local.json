@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(fc-list)",
+      "Bash(alacritty --print-events)",
+      "Bash(toml-test alacritty.toml)",
+      "Bash(fc-list : family style)",
+      "Bash(tmux list-keys:*)",
+      "Bash(tmux show-options:*)",
+      "Bash(tmux list-sessions:*)",
+      "Bash(ls -la ~/.tmux.conf* ~/.zshrc* ~/.config/alacritty/alacritty.toml*)",
+      "Bash(grep -E '\\\\.\\(bak|old|orig|~\\)$|backup')",
+      "Bash(find ~ -maxdepth 2 -name *.tmux.conf* -o -name *zshrc* -o -name *alacritty*)",
+      "Bash(grep -E '\\\\.\\(bak|backup|old|orig\\)$')",
+      "Bash(tmux source-file:*)",
+      "Bash(tmutil listlocalsnapshots:*)",
+      "Bash(find ~/.local/share/claude-code -name *tmux.conf* -o -name *zshrc* -o -name *alacritty*)",
+      "Bash(stty -a)"
+    ]
+  }
+}

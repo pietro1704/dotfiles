@@ -1,0 +1,21 @@
+{{- /* Claude Code settings. Bedrock proxy só faz sentido no Mac de trabalho (Pinterest). */ -}}
+{{- if eq .profile "work" -}}
+{
+  "env": {
+    "ANTHROPIC_CUSTOM_HEADERS": "host: bedrock.pinadmin.com",
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "CLAUDE_CODE_SKIP_BEDROCK_AUTH": "1",
+    "ANTHROPIC_BEDROCK_BASE_URL": "http://localhost:8083"
+  },
+  "model": "global.anthropic.claude-opus-4-6-v1[1m]",
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "swift-lsp@claude-plugins-official": true
+  },
+  "skipDangerousModePermissionPrompt": true
+}
+{{- else -}}
+{
+  "enabledPlugins": {}
+}
+{{- end }}

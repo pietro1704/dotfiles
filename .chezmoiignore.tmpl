@@ -1,0 +1,9 @@
+{{/* Arquivos que só fazem sentido em certos perfis. */ -}}
+{{- if ne .profile "work" }}
+.zshrc.d/pinterest.zsh
+.claude/settings.json
+.claude/settings.local.json
+{{- end }}
+{{- if ne .chezmoi.os "darwin" }}
+.homebrew_config
+{{- end }}

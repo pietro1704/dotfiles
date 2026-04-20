@@ -1,0 +1,87 @@
+[user]
+	name = {{ .name }}
+	email = {{ .email }}
+[pull]
+	rebase = true
+[init]
+	defaultBranch = master
+[core]
+	editor = vim
+	compression = 0
+{{- if eq .chezmoi.os "darwin" }}
+	preloadindex = true
+	fscache = true
+	untrackedCache = true
+	fsmonitor = true
+	commitGraph = true
+	multiPackIndex = true
+{{- end }}
+{{- if eq .chezmoi.os "darwin" }}
+[credential]
+	helper = osxkeychain
+{{- else }}
+[credential]
+	helper = cache --timeout=3600
+{{- end }}
+[fetch]
+	prune = true
+	parallel = {{ .build_jobs }}
+[pack]
+	threads = {{ .build_jobs }}
+	window = 50
+	compression = 1
+	windowMemory = 2g
+	packSizeLimit = 2g
+	deltaCacheSize = 1g
+[gc]
+	auto = 256
+	autodetach = true
+[submodule]
+	fetchJobs = {{ .build_jobs }}
+	recurse = false
+[diff]
+	tool = nvimdiff
+	algorithm = histogram
+[difftool]
+	prompt = false
+[difftool "nvimdiff"]
+	cmd = "nvim -d \"$LOCAL\" \"$REMOTE\""
+{{- if eq .chezmoi.os "darwin" }}
+[merge]
+	tool = filemerge
+	conflictstyle = diff3
+[mergetool]
+	prompt = false
+	keepBackup = false
+	keepTemporaries = false
+[mergetool "filemerge"]
+	cmd = ~/bin/git-mergetool-filemerge \"$LOCAL\" \"$REMOTE\" \"$MERGED\"
+	trustExitCode = false
+{{- else }}
+[merge]
+	tool = nvimdiff
+	conflictstyle = diff3
+[mergetool]
+	prompt = false
+	keepBackup = false
+{{- end }}
+[mergetool "nvimdiff"]
+	cmd = "nvim -d \"$LOCAL\" \"$REMOTE\" \"$MERGED\" -c 'wincmd w' -c 'wincmd J'"
+# Performance (máquinas com muitos cores)
+[index]
+	threads = {{ .build_jobs }}
+	version = 4
+[checkout]
+	workers = {{ .build_jobs }}
+[feature]
+	manyFiles = true
+[protocol]
+	version = 2
+[status]
+	submoduleSummary = true
+	showUntrackedFiles = all
+[blame]
+	ignoreRevsFile = .git-blame-ignore-revs
+[rerere]
+	enabled = true
+	autoupdate = true

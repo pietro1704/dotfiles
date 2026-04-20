@@ -316,8 +316,10 @@ export CHOKIDAR_USEPOLLING=false
 export WATCHMAN_MAX_DEPTH=10
 
 # ── macOS: Pinterest iOS workflow (mx/mxa/mxw/mxc/mxd/mxs/fastbuild/kx/kxd) ──
-# Bloco extenso — separado em ~/.zshrc.d/pinterest.zsh (também gerido pelo chezmoi).
+# Bloco extenso — separado em ~/.zshrc.d/pinterest.zsh (gerido pelo chezmoi, profile=work).
+{{ if eq .profile "work" -}}
 [ -f "$HOME/.zshrc.d/pinterest.zsh" ] && source "$HOME/.zshrc.d/pinterest.zsh"
+{{- end }}
 {{ end -}}
 
 # ── Powerlevel10k theme ───────────────────────────────────────────────────────

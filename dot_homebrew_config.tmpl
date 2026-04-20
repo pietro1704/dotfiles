@@ -1,0 +1,11 @@
+# Homebrew — performance + privacy
+# Sourced por ~/.zshrc em darwin. Jobs parametrizados por host no chezmoi.toml.
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_ANALYTICS=1
+export HOMEBREW_NO_INSTALL_CLEANUP=0
+export HOMEBREW_NO_ENV_HINTS=1
+export HOMEBREW_FORCE_BREWED_GIT=1
+export HOMEBREW_BOOTSNAP=1
+export HOMEBREW_BUILD_FROM_SOURCE=0
+export HOMEBREW_MAKE_JOBS={{ .build_jobs | default 8 }}
+export MAKEFLAGS="-j{{ .build_jobs | default 8 }}"
