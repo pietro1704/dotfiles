@@ -510,6 +510,44 @@ _mx_mise_generate_fast() {
     return $rc
 }
 
+# Auto-detecta estado partido e auto-repara antes de gerar/abrir Xcode.
+# Checks rápidos (<200ms típico):
+#   1. Tuist manifests `.tmp-*` orphan → apagar silenciosamente.
+#   2. build.db: sqlite3 integrity_check — se falhar, kxd automático (graph + zombies).
+#   3. Frameworks zombie (module.modulemap com -Swift.h mas sem o header) → apagar.
+# Se houver corrupção grave, o mx não falha; só avisa e corrige o suficiente.
+_mx_auto_fix_broken_state() {
+    _mx_cache_clean_tuist_manifest_orphans
+
+    local dd db bad=0 zombies=0
+    while IFS= read -r dd; do
+        [[ -z "$dd" ]] && continue
+        db="$dd/Build/Intermediates.noindex/XCBuildData/build.db"
+        if [[ -f "$db" ]]; then
+            if ! sqlite3 "$db" "PRAGMA integrity_check;" 2>/dev/null | grep -q "^ok$"; then
+                echo "⚠️  mx: build.db corrompida em $(basename "$dd") — auto-fix…"
+                _mx_kill_xcode_build_system_daemons
+                rm -rf \
+                    "$dd/Build/Intermediates.noindex/XCBuildData" \
+                    "$dd/Build/Intermediates.noindex/PIFCache" \
+                    "$dd/Build/Intermediates.noindex/BuildDescriptionCache" \
+                    2>/dev/null
+                bad=$((bad+1))
+            fi
+        fi
+        local fw
+        while IFS= read -r fw; do
+            [[ -z "$fw" ]] && continue
+            rm -rf "$fw"
+            zombies=$((zombies+1))
+        done < <(_mx_find_broken_frameworks "$dd")
+    done < <(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' 2>/dev/null)
+
+    (( zombies > 0 )) && echo "⚠️  mx: $zombies framework(s) zombie apagados (module.modulemap sem -Swift.h)"
+    (( bad + zombies > 0 )) && echo "💡 mx: se o build voltar a falhar em cascata → \`mxc db --deep\`"
+    return 0
+}
+
 _mx_fn() {
     local _force=0 _targets=""
     while [[ $# -gt 0 ]]; do
@@ -531,6 +569,10 @@ _mx_fn() {
     _mx_cache_warn_if_over
     _mx_warn_warm_stale
     _mx_quit_xcode
+
+    # Auto-detect build.db corruption (disk I/O error) + Tuist manifest orphans.
+    # Se houver, auto-fix antes de qualquer coisa — senão generate/build falha em cascata.
+    _mx_auto_fix_broken_state
 
     # Fase 1 warmup: boot sim em paralelo ao generate (não depende do projeto).
     _mx_warmup_presim
@@ -785,14 +827,63 @@ _mx_cache_trim() {
         echo "✅ trim: Tuist binaries ${tb_gb} GB ≤ cap ${MX_TUIST_BIN_CAP_GB} GB."
     fi
 }
+# Limpa manifest cache orphan do Tuist (rename conflict `.tmp-XXX` → `1.<hash>`).
+# Quando `tuist` morre a meio (Ctrl-C ou crash do build), deixa `.tmp-*` + `1.<hash>` parcial.
+# Chamado pelo mxc db + kxd + auto-recovery no mx.
+_mx_cache_clean_tuist_manifest_orphans() {
+    local mdir="$HOME/.cache/tuist/Manifests"
+    [[ -d "$mdir" ]] || return 0
+    local removed=0
+    local f
+    for f in "$mdir"/.tmp-*(N); do
+        rm -f "$f" 2>/dev/null && removed=$((removed+1))
+    done
+    (( removed > 0 )) && echo "   ✓ Tuist manifests: $removed .tmp-* orphan(s) apagado(s)"
+    return 0
+}
+
+# Detecta frameworks "broken" em Build/Products: têm module.modulemap mas falta -Swift.h
+# ou .swiftmodule. Quando build.db corrompe a meio de escrever, fica este estado zombie:
+# próximas builds falham infinitamente com "header 'X-Swift.h' not found".
+# Retorna lista de paths de frameworks a apagar (um por linha).
+_mx_find_broken_frameworks() {
+    local dd="${1:?}"
+    local products="$dd/Build/Products"
+    [[ -d "$products" ]] || return 0
+    local fw mm name
+    find "$products" -maxdepth 3 -type d -name '*.framework' 2>/dev/null | while read -r fw; do
+        mm="$fw/Modules/module.modulemap"
+        [[ -f "$mm" ]] || continue
+        name=$(basename "$fw" .framework)
+        if grep -q "${name}-Swift.h" "$mm" 2>/dev/null && [[ ! -f "$fw/Headers/${name}-Swift.h" ]]; then
+            echo "$fw"
+        fi
+    done
+}
+
 # Fix para: error: accessing build database "…/XCBuildData/build.db": disk I/O error
-# Só apaga o *build graph* (XCBuildData/PIFCache/BuildDescriptionCache) + mata daemons do build system.
-# Mantém: ModuleCache.noindex, SourcePackages, SwiftExplicitPrecompiledModules, CompilationCache.noindex,
-# Build/Products, Build/Intermediates.noindex/<Target>.build, Index.noindex → próximo build continua rápido.
+# Modo default (leve):
+#   - mata XCBBuildService/SWBBuildService
+#   - apaga XCBuildData/PIFCache/BuildDescriptionCache
+#   - apaga frameworks zombie (module.modulemap sem -Swift.h) — corrige "header X-Swift.h not found"
+#   - limpa manifest cache orphan do Tuist (.tmp-* do rename conflict)
+# Modo --deep:
+#   - + apaga Build/Products (todos os frameworks compilados)
+#   - + apaga Build/Intermediates.noindex/*.build (objectos/swiftmodules)
+#   - Mantém sempre: ModuleCache.noindex, SourcePackages, SwiftExplicitPrecompiledModules,
+#     CompilationCache.noindex, Index.noindex → rebuild incremental rápido.
 _mx_cache_fix_build_db() {
-    echo "🔧 mxc db: a corrigir build database corrompida (disk I/O error)…"
+    local deep=0
+    [[ "${1:-}" == "--deep" || "${1:-}" == "-d" ]] && deep=1
+
+    if (( deep )); then
+        echo "🔧 mxc db --deep: corrigir build.db + apagar Products/Intermediates (mantém ModuleCache/SourcePackages)…"
+    else
+        echo "🔧 mxc db: corrigir build database corrompida (disk I/O error)…"
+    fi
     _mx_kill_xcode_build_system_daemons
-    local dd count=0
+
+    local dd count=0 broken_total=0
     while IFS= read -r dd; do
         [[ -z "$dd" ]] && continue
         rm -rf \
@@ -800,13 +891,43 @@ _mx_cache_fix_build_db() {
             "$dd/Build/Intermediates.noindex/PIFCache" \
             "$dd/Build/Intermediates.noindex/BuildDescriptionCache" \
             2>/dev/null
+
+        if (( deep )); then
+            rm -rf "$dd/Build/Products" 2>/dev/null
+            local intdir="$dd/Build/Intermediates.noindex"
+            if [[ -d "$intdir" ]]; then
+                find "$intdir" -maxdepth 1 -type d -name '*.build' -exec rm -rf {} + 2>/dev/null
+            fi
+        else
+            # Modo leve: apagar só frameworks zombie (módulo sem -Swift.h).
+            local fw broken=0
+            while IFS= read -r fw; do
+                [[ -z "$fw" ]] && continue
+                rm -rf "$fw"
+                broken=$((broken+1))
+            done < <(_mx_find_broken_frameworks "$dd")
+            if (( broken > 0 )); then
+                echo "   ✓ $broken framework(s) zombie apagados em $(basename "$dd")"
+                broken_total=$((broken_total+broken))
+            fi
+        fi
+
         count=$((count+1))
-        echo "   ✓ $(basename "$dd")"
+        echo "   ✓ $(basename "$dd") — graph apagado"
     done < <(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' 2>/dev/null)
+
+    _mx_cache_clean_tuist_manifest_orphans
+
     if (( count == 0 )); then
         echo "ℹ️  nenhum Pinterest-* DerivedData encontrado."
+        return 0
+    fi
+    if (( deep )); then
+        echo "✅ mxc db --deep: $count workspace(s). Products + Intermediates apagados; ModuleCache/SourcePackages preservados."
+    elif (( broken_total > 0 )); then
+        echo "✅ mxc db: $count workspace(s), $broken_total framework(s) zombie fixos. Se continuar a falhar → \`mxc db --deep\`."
     else
-        echo "✅ mxc db: $count workspace(s) limpo(s). ModuleCache/SourcePackages/Products preservados."
+        echo "✅ mxc db: $count workspace(s). ModuleCache/SourcePackages/Products preservados. Se continuar a falhar → \`mxc db --deep\`."
     fi
 }
 
@@ -956,7 +1077,7 @@ mxc() {
     case "${1:-status}" in
         ""|status|s) _mx_cache_summary ;;
         trim|t)      _mx_cache_trim ;;
-        db|fix)      _mx_cache_fix_build_db ;;
+        db|fix)      shift; _mx_cache_fix_build_db "$@" ;;
         nuke)        shift; _mx_cache_nuke "$@" ;;
         *)
             cat <<'EOF'
@@ -964,8 +1085,12 @@ mxc — cache hygiene
   mxc                  status (default)
   mxc status           tamanhos vs caps + workspaces stale
   mxc trim             apaga Pinterest-<hash> DerivedData stale + tuist binaries se > cap
-  mxc db               corrige build.db disk I/O error (XCBuildData/PIFCache),
-                       mantém ModuleCache/SourcePackages/Products → build continua rápido
+  mxc db               corrige build.db disk I/O error (XCBuildData/PIFCache) + frameworks
+                       zombie (module.modulemap sem -Swift.h) + Tuist manifest orphans.
+                       Mantém ModuleCache/SourcePackages/Products → build continua rápido.
+  mxc db --deep        + apaga Build/Products + Build/Intermediates.noindex/*.build
+                       (quando --deep é preciso: "Could not build module X" persiste após
+                       mxc db leve, ou muitos frameworks zombie). Mantém ModuleCache.
   mxc nuke             apaga TUDO Pinterest-* DD + tuist binaries (confirma)
   mxc nuke --all       + ModuleCache.noindex (rebuild caro)
 
@@ -993,13 +1118,15 @@ kx_hard() {
     echo "⚠️  kx_hard: SourceKit + build — Cursor/LSP pode avisar; primeiro build no Xcode costuma demorar."
 }
 
-# kxd — combo: kx (mata build daemons) + mxc db (limpa build.db corrompida).
-# Usa quando o Xcode atira "build.db: disk I/O error" ou "build.db locked".
+# kxd — combo: kx (mata build daemons) + mxc db (limpa build.db + frameworks zombie + manifests).
+# Usa quando o Xcode atira "build.db: disk I/O error", "build.db locked", ou erros de
+# "Could not build module X / header X-Swift.h not found" em cascata após disk I/O error.
+# Passa --deep pra apagar também Products/Intermediates:  kxd --deep
 unalias kxd 2>/dev/null
 kxd() {
     _mx_kill_xcode_build_system_daemons
-    _mx_cache_fix_build_db
-    echo "✓ kxd: build daemons mortos + build.db limpa. Cmd+B no Xcode."
+    _mx_cache_fix_build_db "$@"
+    echo "✓ kxd: build daemons mortos + cache reparada. Cmd+B no Xcode."
 }
 
 # mxd — doctor one-liner: "posso buildar agora?"
@@ -1031,6 +1158,33 @@ mxd() {
     done < <(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' 2>/dev/null)
     (( dd_bad == 0 && dd_ok > 0 )) && echo "  build.db:     ✓ ok ($dd_ok workspace(s))"
     (( dd_ok == 0 && dd_bad == 0 )) && echo "  build.db:     — ainda não criada"
+
+    # Frameworks zombie (module.modulemap com -Swift.h declarado mas sem o header gerado).
+    local zombies=0 fw
+    while IFS= read -r dd; do
+        [[ -z "$dd" ]] && continue
+        while IFS= read -r fw; do
+            [[ -z "$fw" ]] && continue
+            zombies=$((zombies+1))
+        done < <(_mx_find_broken_frameworks "$dd")
+    done < <(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' 2>/dev/null)
+    if (( zombies > 0 )); then
+        echo "  Frameworks:   ✗ $zombies zombie(s) (modulemap sem -Swift.h) → corre \`mxc db\`"
+    else
+        echo "  Frameworks:   ✓ ok"
+    fi
+
+    # Tuist manifest cache orphans.
+    local mdir="$HOME/.cache/tuist/Manifests" orphans=0
+    if [[ -d "$mdir" ]]; then
+        orphans=$(find "$mdir" -maxdepth 1 -name '.tmp-*' 2>/dev/null | wc -l | tr -d ' ')
+    fi
+    if (( orphans > 0 )); then
+        echo "  Tuist cache:  ✗ $orphans manifest .tmp-* orphan(s) → \`mxc db\` limpa"
+    else
+        echo "  Tuist cache:  ✓ ok"
+    fi
+
     local dd_size mc_size
     dd_size=$(du -sh ~/Library/Developer/Xcode/DerivedData 2>/dev/null | cut -f1)
     mc_size=$(du -sh ~/Library/Developer/Xcode/DerivedData/ModuleCache.noindex 2>/dev/null | cut -f1)
@@ -1040,7 +1194,7 @@ mxd() {
     booted=$(xcrun simctl list devices booted 2>/dev/null | grep -E "iPhone|iPad" | head -1 | sed 's/^ *//')
     [[ -n "$booted" ]] && echo "  Simulador:    ✓ $booted" || echo "  Simulador:    — nenhum booted (mx liga iPhone 14)"
     _mx_warn_warm_stale 2>/dev/null
-    echo "── próximo passo: \`mx\` (ou \`mxc db\` se build.db corrompida, \`kxd\` se Xcode preso) ──"
+    echo "── próximo passo: \`mx\` (ou \`mxc db\` se broken, \`kxd --deep\` se cascade de erros) ──"
 }
 
 unalias gp 2>/dev/null
