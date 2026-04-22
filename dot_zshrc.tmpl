@@ -344,5 +344,15 @@ export WATCHMAN_MAX_DEPTH=10
 # Linux: tema vem do pacote zsh-theme-powerlevel10k (fora do OMZ).
 [ -f /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme ] &&
   source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
+
+# ── Linux: SSH agent persistente (keychain) ──────────────────────────────────
+# Requer: pacman -S keychain. Pede passphrase 1x por boot e reusa em todo shell.
+if command -v keychain >/dev/null 2>&1; then
+  eval "$(keychain --eval --quiet --agents ssh id_ed25519 2>/dev/null)"
+elif [ -z "$SSH_AUTH_SOCK" ] && command -v ssh-agent >/dev/null 2>&1; then
+  # Fallback: agente por sessão (pede passphrase 1x por shell)
+  eval "$(ssh-agent -s)" >/dev/null
+  ssh-add ~/.ssh/id_ed25519 2>/dev/null
+fi
 {{ end -}}
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
