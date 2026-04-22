@@ -568,16 +568,23 @@ _mx_fn() {
     echo "🛑 mx: $(basename "$_repo") → $(basename "$_ws" .xcworkspace)"
     _mx_cache_warn_if_over
     _mx_warn_warm_stale
-    _mx_quit_xcode
 
     # Auto-detect build.db corruption (disk I/O error) + Tuist manifest orphans.
     # Se houver, auto-fix antes de qualquer coisa — senão generate/build falha em cascata.
     _mx_auto_fix_broken_state
 
-    # Fase 1 warmup: boot sim em paralelo ao generate (não depende do projeto).
-    _mx_warmup_presim
-
+    local _needs_generate=0
     if [[ "$_force" == 1 ]] || _mx_project_changed "$_repo" "$_ws"; then
+        _needs_generate=1
+    fi
+
+    if [[ "$_needs_generate" == 1 ]]; then
+        # Só mata Xcode se vamos regenerar — evita reindex desnecessário.
+        _mx_quit_xcode
+
+        # Fase 1 warmup: boot sim em paralelo ao generate (não depende do projeto).
+        _mx_warmup_presim
+
         [[ "$_force" == 1 ]] && echo "📦 mx --force — regenerating…" || echo "📦 Project changed — mise generate --fast --no-open…"
         if _mx_mise_generate_fast "$_repo" "$_targets"; then
             _mx_stamp_update "$_repo"
@@ -586,13 +593,21 @@ _mx_fn() {
             return 1
         fi
     else
-        echo "⚡ No project changes — opening this workspace only"
+        echo "⚡ No project changes — skipping generate, keeping Xcode alive"
+        # Warmup do sim mesmo sem generate (idempotente).
+        _mx_warmup_presim
     fi
 
     [[ -e "$_ws" ]] || {
         echo "❌ Workspace não encontrado: $_ws"
         return 1
     }
+
+    # Se não regenerou e Xcode já está aberto com este workspace, nada a fazer.
+    if [[ "$_needs_generate" == 0 ]] && pgrep -x Xcode >/dev/null 2>&1; then
+        echo "✓ mx: Xcode já aberto, index preservado — nada a fazer"
+        return 0
+    fi
 
     _mx_clear_xcode_saved_application_state
     _mx_pin_scheme_default "$_repo"
@@ -946,7 +961,7 @@ _mx_apply_xcode_prefs() {
     # Prioriza .swiftmodule sobre re-parse quando disponível (menos fantasmas).
     defaults write com.apple.dt.Xcode IDEIndexerActivityShowNumericProgress -bool YES
     # Reduz número de targets indexados em paralelo (menos contenção no disco).
-    defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks -int {{ .build_jobs | default 8 }}
+    defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks -int 16
     # Desliga "Show Live Issues" toggle (source of 90% dos falsos vermelhos).
     defaults write com.apple.dt.Xcode IDEIssueNavigatorShowsLiveIssues -bool NO
     # Mantém os warnings de build (os que interessam) no Issue Navigator.
