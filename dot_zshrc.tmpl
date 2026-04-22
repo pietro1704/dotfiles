@@ -236,7 +236,12 @@ alias gpff='git push -f --no-verify'
 alias gmb="git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short) - %(committerdate:relative) - %(objectname:short) - %(subject)'"
 
 # ── zsh-defer (carrega plugins após o prompt aparecer) ───────────────────────
-[ -f ~/.zsh-defer/zsh-defer.plugin.zsh ] && source ~/.zsh-defer/zsh-defer.plugin.zsh
+if [ -f ~/.zsh-defer/zsh-defer.plugin.zsh ]; then
+  source ~/.zsh-defer/zsh-defer.plugin.zsh
+else
+  # Fallback: sem zsh-defer, carrega sincronamente.
+  zsh-defer() { "$@"; }
+fi
 
 # ── Plugins externos (deferidos) ─────────────────────────────────────────────
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#666666"

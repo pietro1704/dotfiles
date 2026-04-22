@@ -610,6 +610,9 @@ _mx_fn() {
     fi
 
     _mx_clear_xcode_saved_application_state
+    # Mata SourceKitService antes de abrir — Xcode relança-o com estado limpo.
+    # Cura "red lines fantasma" / erros de editor stale sem apagar Index.noindex.
+    killall SourceKitService 2>/dev/null && echo "🧹 mx: SourceKit reset — editor errors limpos"
     _mx_pin_scheme_default "$_repo"
 
     local _scheme
