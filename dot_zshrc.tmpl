@@ -6,11 +6,10 @@ fi
 # ── PATH (typeset -U remove duplicatas automaticamente) ──────────────────────
 typeset -U path
 {{ if eq .chezmoi.os "darwin" -}}
-if command -v brew >/dev/null 2>&1; then
-  HOMEBREW_PREFIX="$(brew --prefix)"
-elif [ -d "/opt/homebrew" ]; then
+# Hardcoded — evita subshell `brew --prefix` (~50ms). Ajustar se mudar de máquina.
+if [ -x "/opt/homebrew/bin/brew" ]; then
   HOMEBREW_PREFIX="/opt/homebrew"
-elif [ -d "/usr/local" ]; then
+elif [ -x "/usr/local/bin/brew" ]; then
   HOMEBREW_PREFIX="/usr/local"
 else
   HOMEBREW_PREFIX=""
@@ -39,11 +38,18 @@ path=(
   $path
 )
 
-# Ruby via Homebrew (+ gem bin dir)
+# Ruby via Homebrew (+ gem bin dir). Cacheado em ~/.cache/zsh/gem_bin — invalidar
+# manualmente (rm) ao trocar versão do ruby. Custo sem cache: ~490ms (gem env gemdir).
 if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/ruby/bin" ]; then
   path=("$HOMEBREW_PREFIX/opt/ruby/bin" $path)
-  GEM_DIR="$(gem environment gemdir 2>/dev/null)"
+  _gem_bin_cache="$HOME/.cache/zsh/gem_bin"
+  if [ ! -f "$_gem_bin_cache" ]; then
+    mkdir -p "${_gem_bin_cache:h}"
+    gem environment gemdir 2>/dev/null > "$_gem_bin_cache"
+  fi
+  GEM_DIR="$(<"$_gem_bin_cache")"
   [ -n "$GEM_DIR" ] && [ -d "$GEM_DIR/bin" ] && path=("$GEM_DIR/bin" $path)
+  unset _gem_bin_cache
 fi
 {{ else -}}
 path=(
@@ -95,6 +101,9 @@ DISABLE_UPDATE_PROMPT="true"
 DISABLE_UNTRACKED_FILES_DIRTY="true"   # git status rápido em repos grandes (Pinterest)
 ENABLE_CORRECTION="true"
 ZSH_COMPDUMP="${HOME}/.zcompdump-${ZSH_VERSION}"
+# Skip OMZ compaudit (~40ms) — assumimos permissões corretas
+ZSH_DISABLE_COMPFIX="true"
+skip_global_compinit=1
 
 # FPATH antes de carregar OMZ
 {{ if eq .chezmoi.os "darwin" -}}
@@ -120,6 +129,14 @@ plugins=(
   archlinux
 {{ end -}}
 )
+
+# compinit rápido: revalida o dump só 1x/dia (economiza ~40ms)
+autoload -Uz compinit
+if [[ -n "$ZSH_COMPDUMP"(#qN.mh-24) ]]; then
+  compinit -C -d "$ZSH_COMPDUMP"
+else
+  compinit -d "$ZSH_COMPDUMP"
+fi
 
 source "$ZSH/oh-my-zsh.sh"
 
@@ -218,29 +235,32 @@ alias gsw='git switch'
 alias gpff='git push -f --no-verify'
 alias gmb="git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short) - %(committerdate:relative) - %(objectname:short) - %(subject)'"
 
-# ── Plugins externos ──────────────────────────────────────────────────────────
-{{ if eq .chezmoi.os "darwin" -}}
-[ -n "$HOMEBREW_PREFIX" ] && [ -f "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ] &&
-  source "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-[ -n "$HOMEBREW_PREFIX" ] && [ -f "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ] &&
-  source "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-{{ else -}}
-[[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] &&
-  source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] &&
-  source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-{{ end -}}
+# ── zsh-defer (carrega plugins após o prompt aparecer) ───────────────────────
+[ -f ~/.zsh-defer/zsh-defer.plugin.zsh ] && source ~/.zsh-defer/zsh-defer.plugin.zsh
 
+# ── Plugins externos (deferidos) ─────────────────────────────────────────────
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#666666"
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+{{ if eq .chezmoi.os "darwin" -}}
+[ -n "$HOMEBREW_PREFIX" ] && [ -f "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ] &&
+  zsh-defer source "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+# syntax-highlighting tem que ser o ÚLTIMO source deferido
+[ -n "$HOMEBREW_PREFIX" ] && [ -f "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ] &&
+  zsh-defer source "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+{{ else -}}
+[[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] &&
+  zsh-defer source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] &&
+  zsh-defer source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+{{ end -}}
 
 # ── FZF ───────────────────────────────────────────────────────────────────────
 {{ if eq .chezmoi.os "linux" -}}
-[[ -f /usr/share/fzf/key-bindings.zsh ]] && source /usr/share/fzf/key-bindings.zsh
-[[ -f /usr/share/fzf/completion.zsh ]]   && source /usr/share/fzf/completion.zsh
+[[ -f /usr/share/fzf/key-bindings.zsh ]] && zsh-defer source /usr/share/fzf/key-bindings.zsh
+[[ -f /usr/share/fzf/completion.zsh ]]   && zsh-defer source /usr/share/fzf/completion.zsh
 {{ else -}}
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+[ -f ~/.fzf.zsh ] && zsh-defer source ~/.fzf.zsh
 {{ end -}}
 export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border --bind ctrl-/:toggle-preview'
 if command -v bat &>/dev/null; then
@@ -289,8 +309,8 @@ fuck() {
 }
 
 {{ if eq .chezmoi.os "darwin" -}}
-# ── macOS: SSH Keychain ───────────────────────────────────────────────────────
-ssh-add --apple-use-keychain ~/.ssh/id_ed25519 > /dev/null 2>&1
+# ── macOS: SSH Keychain (async em background, não bloqueia prompt) ────────────
+(ssh-add --apple-use-keychain ~/.ssh/id_ed25519 &) > /dev/null 2>&1
 
 # ── macOS: OpenSSL para gems ──────────────────────────────────────────────────
 if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/openssl@3" ]; then
@@ -298,10 +318,6 @@ if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/openssl@3" ]; then
   export CPPFLAGS="-I$HOMEBREW_PREFIX/opt/openssl@3/include"
   export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/opt/openssl@3/lib/pkgconfig"
 fi
-
-# ── macOS: Heroku autocomplete ────────────────────────────────────────────────
-HEROKU_AC_ZSH_SETUP_PATH="$HOME/Library/Caches/heroku/autocomplete/zsh_setup"
-[ -f "$HEROKU_AC_ZSH_SETUP_PATH" ] && source "$HEROKU_AC_ZSH_SETUP_PATH"
 
 # ── macOS: Homebrew performance (M4 Max) ─────────────────────────────────────
 [ -f ~/.homebrew_config ] && source ~/.homebrew_config
