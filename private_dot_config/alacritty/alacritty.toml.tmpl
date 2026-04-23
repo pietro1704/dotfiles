@@ -54,7 +54,11 @@ style = { shape = "Block", blinking = "On" }
 
 [terminal.shell]
 {{ if eq .chezmoi.os "darwin" -}}
+{{   if eq .chezmoi.arch "arm64" -}}
+program = "/opt/homebrew/bin/tmux"
+{{   else -}}
 program = "/usr/local/bin/tmux"
+{{   end -}}
 {{ else -}}
 program = "/usr/bin/tmux"
 {{ end -}}
