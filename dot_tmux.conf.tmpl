@@ -100,12 +100,17 @@ set -g @catppuccin_window_current_fill "number"
 set -g @catppuccin_window_current_text " #W"
 
 # Status separators
-set -g @catppuccin_status_left_separator  ""
-set -g @catppuccin_status_right_separator ""
-set -g @catppuccin_status_middle_separator " "
+set -g @catppuccin_status_left_separator  ""
+set -g @catppuccin_status_right_separator ""
+set -g @catppuccin_status_middle_separator ""
 set -g @catppuccin_status_fill "all"
-set -g @catppuccin_status_connect_separator "yes"
-set -g @catppuccin_status_background "#1e1e2e"
+set -g @catppuccin_status_connect_separator "no"
+set -g @catppuccin_status_background "default"
+
+# Date/time (p10k style)
+set -g @catppuccin_date_time_icon " "
+set -g @catppuccin_date_time_color "#{@thm_pink}"
+set -g @catppuccin_date_time_text " at %H:%M:%S"
 
 # Weather (pt-BR, Santos)
 set-environment -g TMUX_WEATHER_LOCATION "Santos,BR"
@@ -125,7 +130,7 @@ set -g status-left-length  150
 set -g status-interval 15
 
 set -g status-left  "#{E:@catppuccin_status_session}"
-set -g status-right "#{E:@catppuccin_status_cpu}#{E:@catppuccin_status_uptime}#{E:@catppuccin_status_weather}"
+set -g status-right "#{E:@catppuccin_status_cpu}#{E:@catppuccin_status_uptime}#{E:@catppuccin_status_date_time}#{E:@catppuccin_status_weather}"
 
 # Initialize TPM (keep at bottom)
 run '~/.tmux/plugins/tpm/tpm'
