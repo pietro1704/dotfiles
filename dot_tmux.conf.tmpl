@@ -18,6 +18,9 @@ set-option -g set-titles-string '#T'
 bind -n M-Left  send-keys "\eb"
 bind -n M-Right send-keys "\ef"
 
+# clear screen (C-l passthrough — tmux-sensible sobrescreve o default)
+bind -n C-l send-keys C-l
+
 set -g default-terminal "tmux-256color"
 {{ if eq .chezmoi.os "darwin" -}}
 set -as terminal-overrides ",alacritty:RGB"
