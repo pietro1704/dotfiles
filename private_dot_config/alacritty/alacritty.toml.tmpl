@@ -1,23 +1,18 @@
 [general]
+live_config_reload = true
 import = ["~/.config/alacritty/catppuccin-mocha.toml"]
 
 [font]
 {{ if eq .chezmoi.os "darwin" -}}
 size = 12.0
-
-[font.normal]
-family = "JetBrainsMono Nerd Font"
-style  = "Regular"
-
-[font.bold]
-family = "JetBrainsMono Nerd Font"
-style  = "Bold"
-
-[font.italic]
-family = "JetBrainsMono Nerd Font"
-style  = "Italic"
 {{ else -}}
 size = 13.0
+{{ end -}}
+builtin_box_drawing = true
+
+[font.offset]
+x = 0
+y = 1
 
 [font.normal]
 family = "JetBrainsMono Nerd Font"
@@ -30,7 +25,10 @@ style  = "Bold"
 [font.italic]
 family = "JetBrainsMono Nerd Font"
 style  = "Italic"
-{{ end -}}
+
+[font.bold_italic]
+family = "JetBrainsMono Nerd Font"
+style  = "Bold Italic"
 
 [window]
 {{ if eq .chezmoi.os "darwin" -}}

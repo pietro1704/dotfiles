@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FONT_NAME="JetBrainsMono"
+
+{{ if eq .chezmoi.os "darwin" -}}
+# macOS: instala via Homebrew cask
+if ! fc-list 2>/dev/null | grep -qi "JetBrainsMono Nerd Font" && \
+   ! ls ~/Library/Fonts/*JetBrainsMono* &>/dev/null && \
+   ! ls /Library/Fonts/*JetBrainsMono* &>/dev/null; then
+  echo ">>> Instalando JetBrainsMono Nerd Font via Homebrew..."
+  brew install --cask font-jetbrains-mono-nerd-font
+  echo ">>> Fonte instalada."
+else
+  echo ">>> JetBrainsMono Nerd Font já instalada."
+fi
+
+{{ else if eq .chezmoi.os "linux" -}}
+# Arch Linux: instala via pacman
+if ! fc-list | grep -qi "JetBrainsMono Nerd Font"; then
+  echo ">>> Instalando JetBrainsMono Nerd Font..."
+  if command -v pacman &>/dev/null; then
+    sudo pacman -S --noconfirm --needed ttf-jetbrains-mono-nerd
+  else
+    # Fallback: download manual do GitHub releases
+    NERD_VERSION="v3.3.0"
+    FONT_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
+    mkdir -p "$FONT_DIR"
+    TMP=$(mktemp -d)
+    curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_VERSION}/${FONT_NAME}.tar.xz" -o "$TMP/${FONT_NAME}.tar.xz"
+    tar -xf "$TMP/${FONT_NAME}.tar.xz" -C "$FONT_DIR"
+    rm -rf "$TMP"
+    fc-cache -fv "$FONT_DIR"
+  fi
+  echo ">>> Fonte instalada."
+else
+  echo ">>> JetBrainsMono Nerd Font já instalada."
+fi
+{{ end -}}
