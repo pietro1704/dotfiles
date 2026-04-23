@@ -66,7 +66,7 @@ path=(
 {{ end -}}
 
 # ── Locale ────────────────────────────────────────────────────────────────────
-export LC_NUMERIC="en_US.UTF-8"   # LANG/LC_ALL definidos em .zshenv
+# LC_NUMERIC/LANG/LC_ALL definidos em .zshenv
 [[ -z "$TMUX" ]] && export TERM="xterm-256color"
 {{ if eq .chezmoi.os "darwin" -}}
 export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
@@ -76,8 +76,6 @@ unset OVERRIDE_XCODE
 # ── Editor ────────────────────────────────────────────────────────────────────
 if [[ -n $SSH_CONNECTION ]]; then
   export EDITOR="vim"
-elif command -v lvim >/dev/null 2>&1; then
-  export EDITOR="lvim"
 else
   export EDITOR="nvim"
 fi
@@ -87,7 +85,7 @@ export VISUAL="$EDITOR"
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000
 SAVEHIST=50000
-setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_VERIFY SHARE_HISTORY EXTENDED_HISTORY
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_VERIFY SHARE_HISTORY EXTENDED_HISTORY HIST_FIND_NO_DUPS HIST_REDUCE_BLANKS INC_APPEND_HISTORY
 
 # ── Opções Zsh ────────────────────────────────────────────────────────────────
 setopt AUTO_CD NO_BEEP GLOB_DOTS
@@ -176,9 +174,7 @@ else
 fi
 
 alias grep='grep --color=auto'
-alias .='source'
-alias reload='source'
-alias zshs='source ~/.zshrc && clear'
+alias reload='source ~/.zshrc && clear'
 
 # ── Aliases — sistema ─────────────────────────────────────────────────────────
 {{ if eq .chezmoi.os "linux" -}}
@@ -327,11 +323,11 @@ fi
 # ── macOS: Homebrew performance (M4 Max) ─────────────────────────────────────
 [ -f ~/.homebrew_config ] && source ~/.homebrew_config
 
-# ── macOS: M4 Max build parallelism ──────────────────────────────────────────
-export MAKEFLAGS="-j16"
-export CARGO_BUILD_JOBS=16
-export SWIFT_EXEC_THREADS=16
-export UV_THREADPOOL_SIZE=16
+# ── macOS: build parallelism ──────────────────────────────────────────────────
+export MAKEFLAGS="-j{{ .build_jobs }}"
+export CARGO_BUILD_JOBS={{ .build_jobs }}
+export SWIFT_EXEC_THREADS={{ .build_jobs }}
+export UV_THREADPOOL_SIZE={{ .build_jobs }}
 export TUIST_STATS_OPT_OUT=1
 export CHOKIDAR_USEPOLLING=false
 export WATCHMAN_MAX_DEPTH=10

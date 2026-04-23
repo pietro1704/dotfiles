@@ -20,7 +20,6 @@ set ignorecase
 set smartcase
 set scrolloff=8
 set colorcolumn=100
-set signcolumn=yes
 set cmdheight=2
 set updatetime=100
 set encoding=utf-8
@@ -101,11 +100,6 @@ Plug 'sheerun/vim-polyglot'
 Plug 'honza/vim-snippets'
 Plug 'jiangmiao/auto-pairs'
 
-if (has("nvim"))
-  Plug 'nvim-lua/plenary.nvim'
-  Plug 'nvim-telescope/telescope.nvim'
-endif
-
 call plug#end()
 
 " ── Mappings ──────────────────────────────────────────────────────────────────
@@ -137,8 +131,4 @@ inoremap <silent><expr> <TAB>
   \ <SID>check_back_space() ? "\<TAB>" :
   \ "\<TAB>"
 
-if has("patch-8.1.1564")
-  set signcolumn=number
-else
-  set signcolumn=no
-endif
+set signcolumn=number

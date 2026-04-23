@@ -6,15 +6,15 @@ import = ["~/.config/alacritty/catppuccin-mocha.toml"]
 size = 12.0
 
 [font.normal]
-family = "MesloLGS NF"
+family = "JetBrainsMono Nerd Font"
 style  = "Regular"
 
 [font.bold]
-family = "MesloLGS NF"
+family = "JetBrainsMono Nerd Font"
 style  = "Bold"
 
 [font.italic]
-family = "MesloLGS NF"
+family = "JetBrainsMono Nerd Font"
 style  = "Italic"
 {{ else -}}
 size = 13.0
@@ -34,7 +34,7 @@ style  = "Italic"
 
 [window]
 {{ if eq .chezmoi.os "darwin" -}}
-decorations     = "Buttonless"
+decorations     = "Full"
 startup_mode    = "Windowed"
 dimensions      = { columns = 180, lines = 50 }
 option_as_alt   = "Both"

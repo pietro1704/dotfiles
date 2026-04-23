@@ -26,13 +26,14 @@
 [fetch]
 	prune = true
 	parallel = {{ .build_jobs }}
+	writeCommitGraph = true
 [pack]
 	threads = {{ .build_jobs }}
 	window = 50
 	compression = 1
 	windowMemory = 2g
 	packSizeLimit = 2g
-	deltaCacheSize = 1g
+	deltaCacheSize = 512m
 [gc]
 	auto = 256
 	autodetach = true

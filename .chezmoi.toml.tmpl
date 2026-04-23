@@ -15,8 +15,7 @@
 {{- $buildJobs := env "CHEZMOI_BUILD_JOBS" -}}
 {{- if eq $buildJobs "" -}}
   {{- if eq $profile "work" -}}{{- $buildJobs = "16" -}}
-  {{- else if eq $profile "arch" -}}{{- $buildJobs = "8" -}}
-  {{- else -}}{{- $buildJobs = "4" -}}
+  {{- else -}}{{- $buildJobs = "8" -}}
   {{- end -}}
 {{- end -}}
 
