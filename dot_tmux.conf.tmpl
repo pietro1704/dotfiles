@@ -55,18 +55,6 @@ bind P paste-buffer
 
 bind r source-file ~/.tmux.conf \; display-message "~/.tmux.conf reloaded."
 
-# Smart pane switching (vim-aware)
-bind -n C-h select-pane -L
-bind -n C-j select-pane -D
-bind -n C-k select-pane -U
-bind -n C-l select-pane -R
-
-# Resize panes com prefix + HJKL
-bind -r H resize-pane -L 5
-bind -r J resize-pane -D 5
-bind -r K resize-pane -U 5
-bind -r L resize-pane -R 5
-
 set-option -a terminal-features 'xterm-256color:RGB'
 
 # activity (visual off = evita spam de mensagens em muitos panes)
@@ -104,7 +92,7 @@ set -g @resurrect-strategy-nvim 'session'
 set -g @catppuccin_flavor "mocha"
 
 # Window styling
-set -g @catppuccin_window_status_style "basic"
+set -g @catppuccin_window_status_style "rounded"
 set -g @catppuccin_window_number_position "left"
 set -g @catppuccin_window_default_fill "number"
 set -g @catppuccin_window_default_text " #W"
@@ -112,11 +100,12 @@ set -g @catppuccin_window_current_fill "number"
 set -g @catppuccin_window_current_text " #W"
 
 # Status separators
-set -g @catppuccin_status_left_separator  " "
-set -g @catppuccin_status_right_separator " "
-set -g @catppuccin_status_fill "icon"
-set -g @catppuccin_status_connect_separator "no"
-set -g @catppuccin_status_background "none"
+set -g @catppuccin_status_left_separator  ""
+set -g @catppuccin_status_right_separator ""
+set -g @catppuccin_status_middle_separator " "
+set -g @catppuccin_status_fill "all"
+set -g @catppuccin_status_connect_separator "yes"
+set -g @catppuccin_status_background "#1e1e2e"
 
 # Weather (pt-BR, Santos)
 set-environment -g TMUX_WEATHER_LOCATION "Santos,BR"
@@ -131,12 +120,12 @@ source-file -q ~/.tmux/plugins/tmux/catppuccin_tmux.conf
 
 # ── Status bar ────────────────────────────────────────────────────────────────
 set -g status-position bottom
-set -g status-right-length 250
+set -g status-right-length 300
 set -g status-left-length  150
 set -g status-interval 15
 
 set -g status-left  "#{E:@catppuccin_status_session}"
-set -g status-right "#{E:@catppuccin_status_cpu}#{E:@catppuccin_status_uptime}"
+set -g status-right "#{E:@catppuccin_status_cpu}#{E:@catppuccin_status_uptime}#{E:@catppuccin_status_weather}"
 
 # Initialize TPM (keep at bottom)
 run '~/.tmux/plugins/tpm/tpm'
