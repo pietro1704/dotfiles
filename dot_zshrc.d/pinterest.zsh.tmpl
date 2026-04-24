@@ -603,10 +603,20 @@ _mx_fn() {
         return 1
     }
 
-    # Se não regenerou e Xcode já está aberto com este workspace, nada a fazer.
+    # Se não regenerou, mas o workspace foi regenerado externamente (ex: make tuist_sandbox),
+    # o Xcode precisa reabrir para pegar o projeto novo.
     if [[ "$_needs_generate" == 0 ]] && pgrep -x Xcode >/dev/null 2>&1; then
-        echo "✓ mx: Xcode já aberto, index preservado — nada a fazer"
-        return 0
+        local _ws_mtime _stamp_file _stamp_mtime
+        _stamp_file="/tmp/mx-last-xcode-open-$(md5 -qs "$_repo")"
+        _ws_mtime=$(stat -f %m "$_ws/contents.xcworkspacedata" 2>/dev/null || echo 0)
+        _stamp_mtime=$(stat -f %m "$_stamp_file" 2>/dev/null || echo 0)
+        if [[ "$_ws_mtime" -gt "$_stamp_mtime" ]]; then
+            echo "🔄 mx: workspace regenerado externamente — reabrindo Xcode"
+            _mx_quit_xcode
+        else
+            echo "✓ mx: Xcode já aberto, index preservado — nada a fazer"
+            return 0
+        fi
     fi
 
     _mx_clear_xcode_saved_application_state
@@ -623,6 +633,7 @@ _mx_fn() {
     _mx_warmup_postgen "$_repo" "$_ws" "$_scheme"
 
     xed "$_ws"
+    touch "/tmp/mx-last-xcode-open-$(md5 -qs "$_repo")"
 
     _mx_maybe_reset_build_for_new_head "$_repo" "$_ws"
 
