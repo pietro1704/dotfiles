@@ -253,8 +253,12 @@ _mx_pin_scheme_default() {
 _mx_head_diff_touches_project() {
     local repo="${1:?}" prev="${2:-}" now="${3:-}"
     [[ -z "$prev" || -z "$now" ]] && return 0
+    # Tuist/Project configs OR source files added/deleted (Tuist globs need regen)
     (cd "$repo" && git diff --name-only "$prev" "$now" 2>/dev/null \
         | grep -qE '(^|/)(Project\.swift|Workspace\.swift|Package\.swift|Package\.resolved)$|^Tuist/') && return 0
+    # Source files added or deleted between commits → Tuist project file list changed
+    (cd "$repo" && git diff --diff-filter=ADR --name-only "$prev" "$now" 2>/dev/null \
+        | grep -qE '\.(swift|[mhc]|mm|cpp|xib|storyboard|xcassets|plist)$') && return 0
     return 1
 }
 
