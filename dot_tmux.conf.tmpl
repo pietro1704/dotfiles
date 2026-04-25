@@ -141,3 +141,11 @@ set -g status-right "#{E:@catppuccin_status_cpu}#{E:@catppuccin_status_uptime}#{
 
 # Initialize TPM (keep at bottom)
 run '~/.tmux/plugins/tpm/tpm'
+
+# Post-TPM overrides (tmux-yank sobrescreve binds, reaplica aqui)
+{{ if eq .chezmoi.os "darwin" -}}
+bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
+{{ else -}}
+bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "wl-copy"
+{{ end -}}
+bind -T copy-mode-vi MouseDown1Pane select-pane \; send-keys -X cancel
