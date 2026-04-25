@@ -48,12 +48,16 @@ setw -g mode-keys vi
 
 bind -T copy-mode-vi v send -X begin-selection
 {{ if eq .chezmoi.os "darwin" -}}
+set -g @yank_command "pbcopy"
 bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "pbcopy"
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
 {{ else -}}
+set -g @yank_command "wl-copy"
 bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "wl-copy"
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "wl-copy"
 {{ end -}}
+set -g @yank_with_mouse on
+set -g @yank_selection_mouse 'clipboard'
 bind P paste-buffer
 
 bind r source-file ~/.tmux.conf \; display-message "~/.tmux.conf reloaded."
