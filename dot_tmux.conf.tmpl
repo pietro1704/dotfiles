@@ -10,6 +10,7 @@ set-environment -g WAYLAND_DISPLAY "$WAYLAND_DISPLAY"
 {{ end -}}
 
 set-option -g allow-passthrough on
+set-option -g set-clipboard on
 
 # window title
 set-option -g set-titles on
@@ -52,8 +53,8 @@ bind -T copy-mode-vi v send -X begin-selection
 bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "pbcopy"
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
 {{ else -}}
-bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "wl-copy"
-bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "wl-copy"
+bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "if [ -n \"$WAYLAND_DISPLAY\" ]; then wl-copy; else cat > /dev/null; fi"
+bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "if [ -n \"$WAYLAND_DISPLAY\" ]; then wl-copy; else cat > /dev/null; fi"
 {{ end -}}
 bind -T copy-mode-vi MouseDown1Pane select-pane \; send-keys -X cancel
 bind P paste-buffer
