@@ -6,6 +6,7 @@ set-environment -g TMUX_PLUGIN_MANAGER_PATH "~/.tmux/plugins/"
 set-environment -g PATH "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 {{ else -}}
 set-environment -g PATH "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+set-environment -g WAYLAND_DISPLAY "$WAYLAND_DISPLAY"
 {{ end -}}
 
 set-option -g allow-passthrough on
