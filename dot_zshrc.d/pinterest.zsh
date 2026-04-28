@@ -627,6 +627,9 @@ _mx_fn() {
     # Mata SourceKitService antes de abrir — Xcode relança-o com estado limpo.
     # Cura "red lines fantasma" / erros de editor stale sem apagar Index.noindex.
     killall SourceKitService 2>/dev/null && echo "🧹 mx: SourceKit reset — editor errors limpos"
+    # Apaga build logs antigos → Issue Navigator abre vazio (sem erros stale da sessão anterior).
+    # Logs/Build é recriado no próximo Cmd+B. Não toca em Build/ nem Index.noindex.
+    find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' -exec rm -rf {}/Logs/Build \; 2>/dev/null
     _mx_pin_scheme_default "$_repo"
 
     local _scheme
@@ -1820,6 +1823,88 @@ npm() {
 npx() {
     _lazy_load_nvm
     npx "$@"
+}
+
+# MARK: - Pinterest iOS: test aliases (xcodebuild test, build-for-testing, test-without-building)
+#   mt   <scheme> [only_testing]  — build + test (one shot)
+#   mtb  <scheme>                — build-for-testing only (compile, no run)
+#   mtt  <scheme> [only_testing] — test-without-building (fastest iteration, reuses last build)
+#   Default sim: iPhone 14 (0DA00AEF-ACF2-4619-BB53-F491BC4C28AB)
+PIN_TEST_SIM="0DA00AEF-ACF2-4619-BB53-F491BC4C28AB"
+
+mt() {
+    local scheme="${1:?Usage: mt <scheme> [only_testing]}"
+    local only="${2:-}"
+    local ot_flag=()
+    [[ -n "$only" ]] && ot_flag=("-only-testing:$only")
+    local repo=$(_mx_repo)
+    local ws=$(_mx_workspace "$repo")
+    local start=$SECONDS
+    (cd "$repo" && xcodebuild test \
+        -workspace "$ws" \
+        -scheme "$scheme" \
+        -sdk iphonesimulator \
+        -destination "id=$PIN_TEST_SIM" \
+        "${ot_flag[@]}" \
+        $PIN_BUILD_PARALLEL \
+        CODE_SIGNING_ALLOWED=NO \
+        2>&1) | xcbeautify --preserve-unbeautified
+    local rc=$pipestatus[1]
+    local elapsed=$(( SECONDS - start ))
+    if [[ $rc -eq 0 ]]; then
+        echo "✅ mt: $scheme passed in ${elapsed}s"
+    else
+        echo "❌ mt: $scheme failed in ${elapsed}s (exit $rc)"
+    fi
+    return $rc
+}
+
+mtb() {
+    local scheme="${1:?Usage: mtb <scheme>}"
+    local repo=$(_mx_repo)
+    local ws=$(_mx_workspace "$repo")
+    local start=$SECONDS
+    (cd "$repo" && xcodebuild build-for-testing \
+        -workspace "$ws" \
+        -scheme "$scheme" \
+        -sdk iphonesimulator \
+        -destination "id=$PIN_TEST_SIM" \
+        $PIN_BUILD_PARALLEL \
+        CODE_SIGNING_ALLOWED=NO \
+        2>&1) | xcbeautify --preserve-unbeautified
+    local rc=$pipestatus[1]
+    local elapsed=$(( SECONDS - start ))
+    if [[ $rc -eq 0 ]]; then
+        echo "✅ mtb: $scheme built for testing in ${elapsed}s"
+    else
+        echo "❌ mtb: $scheme build-for-testing failed in ${elapsed}s (exit $rc)"
+    fi
+    return $rc
+}
+
+mtt() {
+    local scheme="${1:?Usage: mtt <scheme> [only_testing]}"
+    local only="${2:-}"
+    local ot_flag=()
+    [[ -n "$only" ]] && ot_flag=("-only-testing:$only")
+    local repo=$(_mx_repo)
+    local ws=$(_mx_workspace "$repo")
+    local start=$SECONDS
+    (cd "$repo" && xcodebuild test-without-building \
+        -workspace "$ws" \
+        -scheme "$scheme" \
+        -sdk iphonesimulator \
+        -destination "id=$PIN_TEST_SIM" \
+        "${ot_flag[@]}" \
+        2>&1) | xcbeautify --preserve-unbeautified
+    local rc=$pipestatus[1]
+    local elapsed=$(( SECONDS - start ))
+    if [[ $rc -eq 0 ]]; then
+        echo "✅ mtt: $scheme passed in ${elapsed}s (no rebuild)"
+    else
+        echo "❌ mtt: $scheme failed in ${elapsed}s (exit $rc)"
+    fi
+    return $rc
 }
 
 # ============================================================================
