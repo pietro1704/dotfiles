@@ -570,19 +570,21 @@ _mx_fn() {
     _ws=$(_mx_workspace "$_repo")
 
     echo "🛑 mx: $(basename "$_repo") → $(basename "$_ws" .xcworkspace)"
-    _mx_cache_warn_if_over
-    _mx_warn_warm_stale
 
-    # Auto-detect build.db corruption (disk I/O error) + Tuist manifest orphans.
-    # Se houver, auto-fix antes de qualquer coisa — senão generate/build falha em cascata.
-    _mx_auto_fix_broken_state
+    # Checks lentos em background — não bloqueiam o flow principal.
+    _mx_cache_warn_if_over &!
+    _mx_warn_warm_stale &!
 
+    # Auto-fix: só corre se --force ou se project changed (evita sqlite + find no path rápido).
     local _needs_generate=0
     if [[ "$_force" == 1 ]] || _mx_project_changed "$_repo" "$_ws"; then
         _needs_generate=1
     fi
 
     if [[ "$_needs_generate" == 1 ]]; then
+        # Auto-fix só antes de generate — evita sqlite + find no path rápido.
+        _mx_auto_fix_broken_state
+
         # Só mata Xcode se vamos regenerar — evita reindex desnecessário.
         _mx_quit_xcode
 
@@ -607,66 +609,29 @@ _mx_fn() {
         return 1
     }
 
-    # Se não regenerou, mas o workspace foi regenerado externamente (ex: make tuist_sandbox),
-    # o Xcode precisa reabrir para pegar o projeto novo.
+    # Sempre fecha o Xcode se já aberto — garante estado limpo ao reabrir.
     if [[ "$_needs_generate" == 0 ]] && pgrep -x Xcode >/dev/null 2>&1; then
-        local _ws_mtime _stamp_file _stamp_mtime
-        _stamp_file="/tmp/mx-last-xcode-open-$(md5 -qs "$_repo")"
-        _ws_mtime=$(stat -f %m "$_ws/contents.xcworkspacedata" 2>/dev/null || echo 0)
-        _stamp_mtime=$(stat -f %m "$_stamp_file" 2>/dev/null || echo 0)
-        if [[ "$_ws_mtime" -gt "$_stamp_mtime" ]]; then
-            echo "🔄 mx: workspace regenerado externamente — reabrindo Xcode"
-            _mx_quit_xcode
-        else
-            echo "✓ mx: Xcode já aberto, index preservado — nada a fazer"
-            return 0
-        fi
+        echo "🔄 mx: a fechar Xcode para reabrir com estado limpo"
+        _mx_quit_xcode
     fi
 
-    _mx_clear_xcode_saved_application_state
-    # Mata SourceKitService antes de abrir — Xcode relança-o com estado limpo.
-    # Cura "red lines fantasma" / erros de editor stale sem apagar Index.noindex.
-    killall SourceKitService 2>/dev/null && echo "🧹 mx: SourceKit reset — editor errors limpos"
-    # Apaga build logs antigos → Issue Navigator abre vazio (sem erros stale da sessão anterior).
-    # Logs/Build é recriado no próximo Cmd+B. Não toca em Build/ nem Index.noindex.
-    find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' -exec rm -rf {}/Logs/Build \; 2>/dev/null
+    # Cleanup leve em background — não bloqueia open.
+    killall SourceKitService 2>/dev/null &!
+    find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' -exec rm -rf {}/Logs/Build \; 2>/dev/null &!
     _mx_pin_scheme_default "$_repo"
 
     local _scheme
     _scheme=$(_mx_scheme_from_targets "$_targets")
 
-    # Fase 2 warmup: SPM resolve + package graph + scheme metadata em paralelo com xed.
-    # Precisa do workspace já pronto (por isso não rodou em paralelo com generate).
-    _mx_warmup_postgen "$_repo" "$_ws" "$_scheme"
+    # Warmup pós-generate: só quando regenerou (xcodebuild -showBuildSettings é lento).
+    [[ "$_needs_generate" == 1 ]] && _mx_warmup_postgen "$_repo" "$_ws" "$_scheme"
 
-    xed "$_ws"
+    open "$_ws"
     touch "/tmp/mx-last-xcode-open-$(md5 -qs "$_repo")"
 
     _mx_maybe_reset_build_for_new_head "$_repo" "$_ws"
 
-    echo "✓ mx: a definir scheme $_scheme + sim ($MX_PIN_SIM_SUBSTR)…"
-    sleep 2
-    local asr ose
-    ose=$(mktemp "${TMPDIR:-/tmp}/mx-osa-err.XXXXXX")
-    asr=$(_mx_xcode_set_scheme_and_destination "$_ws" "$_scheme" 2>"$ose" | head -1 | tr -d '\r') || true
-    [[ -s "$ose" ]] && { echo "mx (AppleScript stderr):" >&2; cat "$ose" >&2; }
-    rm -f "$ose"
-    case "${asr%%$'\n'}" in
-        ""|no_scheme|timeout_load|scheme_set:*)
-            echo "⌛ mx: a repetir seleção de scheme…" >&2
-            sleep 2
-            ose=$(mktemp "${TMPDIR:-/tmp}/mx-osa-err.XXXXXX")
-            asr=$(_mx_xcode_set_scheme_and_destination "$_ws" "$_scheme" 2>"$ose" | head -1 | tr -d '\r') || true
-            [[ -s "$ose" ]] && cat "$ose" >&2
-            rm -f "$ose"
-            ;;
-    esac
-    case "${asr%%$'\n'}" in
-        ok)                 echo "✓ mx: $_scheme · sim $MX_PIN_SIM_SUBSTR (sem dispositivo físico)" ;;
-        sim_any)            echo "✓ mx: $_scheme · primeiro simulador iOS (sem $MX_PIN_SIM_SUBSTR nem device USB)" ;;
-        no_destination)    echo "✓ mx: scheme $_scheme (sem simulador na lista — escolhe destino no Xcode)" ;;
-        *)                  echo "⚠️  mx: scheme/destino falhou (${asr:-error}) — workspace $(basename "$_ws")" >&2 ;;
-    esac
+    echo "✓ mx: workspace aberto"
     return 0
 }
 
