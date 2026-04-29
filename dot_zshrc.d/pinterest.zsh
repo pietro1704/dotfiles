@@ -421,6 +421,8 @@ _mx_open_workspace_solo() {
         echo "❌ Workspace não encontrado: $_ws"
         return 1
     }
+    local _repo
+    _repo=$(_mx_repo)
     _mx_quit_xcode
     _mx_clear_xcode_saved_application_state
     _mx_pin_scheme_default "$_repo"
@@ -609,15 +611,6 @@ _mx_fn() {
         return 1
     }
 
-    # Sempre fecha o Xcode se já aberto — garante estado limpo ao reabrir.
-    if [[ "$_needs_generate" == 0 ]] && pgrep -x Xcode >/dev/null 2>&1; then
-        echo "🔄 mx: a fechar Xcode para reabrir com estado limpo"
-        _mx_quit_xcode
-    fi
-
-    # Cleanup leve em background — não bloqueia open.
-    killall SourceKitService 2>/dev/null &!
-    find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -type d -name 'Pinterest-*' -exec rm -rf {}/Logs/Build \; 2>/dev/null &!
     _mx_pin_scheme_default "$_repo"
 
     local _scheme
@@ -631,7 +624,25 @@ _mx_fn() {
 
     _mx_maybe_reset_build_for_new_head "$_repo" "$_ws"
 
-    echo "✓ mx: workspace aberto"
+    echo "✓ mx: a definir scheme $_scheme + sim ($MX_PIN_SIM_SUBSTR)…"
+    sleep 0.5
+    local _asr _ose
+    _ose=$(mktemp "${TMPDIR:-/tmp}/mx-osa-err.XXXXXX")
+    _asr=$(_mx_xcode_set_scheme_and_destination "$_ws" "$_scheme" 2>"$_ose" | head -1 | tr -d '\r') || true
+    [[ -s "$_ose" ]] && { echo "mx (AppleScript stderr):" >&2; cat "$_ose" >&2; }
+    rm -f "$_ose"
+    case "${_asr%%$'\n'}" in
+        ok)                 echo "✓ mx: $_scheme · sim $MX_PIN_SIM_SUBSTR" ;;
+        sim_any)            echo "✓ mx: $_scheme · primeiro simulador iOS (sem $MX_PIN_SIM_SUBSTR)" ;;
+        no_destination)     echo "✓ mx: scheme $_scheme (sem simulador na lista)" ;;
+        no_workspace|"")
+            echo "⌛ mx: workspace não pronto — retry…" >&2
+            sleep 2
+            _mx_xcode_set_scheme_and_destination "$_ws" "$_scheme" >/dev/null 2>&1
+            echo "✓ mx: retry concluído"
+            ;;
+        *)                  echo "⚠️  mx: scheme/destino falhou (${_asr:-error})" >&2 ;;
+    esac
     return 0
 }
 
@@ -1416,105 +1427,7 @@ _mx_verbose_xcbuild_flag() {
 }
 
 unalias fastbuild 2>/dev/null
-fastbuild() {
-    local launch=0
-    for a in "$@"; do
-        case "$a" in
-            --run|-r) launch=1 ;;
-        esac
-    done
-
-    local repo=$(_mx_repo)
-    local ws
-    ws=$(basename "$(_mx_workspace)")
-
-    local _vlvl
-    _vlvl=$(_mx_verbose_level "$@")
-    local _vflag
-    _vflag=$(_mx_verbose_xcbuild_flag "$_vlvl")
-
-    _clean_build_graph
-    local start=$SECONDS
-    local sim_dest="platform=iOS Simulator,arch=arm64,name=iPhone 14"
-    # Local: desliga background tasks (indexing paralelo) só pra este fastbuild.
-    export XCODE_DISABLE_BACKGROUND_TASKS=YES
-
-    echo "🔨 fastbuild: $MX_PIN_SCHEME ($ws) @ $repo${_vlvl:+ (verbose=$_vlvl)}"
-    local status
-    if [[ "$_vlvl" -ge 2 ]]; then
-        (cd "$repo" && tuist xcodebuild -workspace "$ws" build \
-            -scheme "$MX_PIN_SCHEME" \
-            -configuration Debug \
-            -destination "$sim_dest" \
-            $_vflag \
-            $PIN_BUILD_PARALLEL \
-            CODE_SIGNING_ALLOWED=NO \
-            RUN_CLANG_STATIC_ANALYZER=NO \
-            CLANG_COVERAGE_MAPPING=NO \
-            CLANG_COVERAGE_MAPPING_LINKER_ARGS= \
-            SWIFT_SERIALIZE_DEBUGGING_OPTIONS=NO \
-            ENABLE_PREVIEWS=NO \
-            ENABLE_TESTING_SEARCH_PATHS=NO \
-            build)
-        status=$?
-    elif [[ "$_vlvl" -ge 1 ]]; then
-        (cd "$repo" && tuist xcodebuild -workspace "$ws" build \
-            -scheme "$MX_PIN_SCHEME" \
-            -configuration Debug \
-            -destination "$sim_dest" \
-            $PIN_BUILD_PARALLEL \
-            CODE_SIGNING_ALLOWED=NO \
-            RUN_CLANG_STATIC_ANALYZER=NO \
-            CLANG_COVERAGE_MAPPING=NO \
-            CLANG_COVERAGE_MAPPING_LINKER_ARGS= \
-            SWIFT_SERIALIZE_DEBUGGING_OPTIONS=NO \
-            ENABLE_PREVIEWS=NO \
-            ENABLE_TESTING_SEARCH_PATHS=NO \
-            build) 2>&1 | xcbeautify --preserve-unbeautified
-        status=$pipestatus[1]
-    else
-        (cd "$repo" && tuist xcodebuild -workspace "$ws" build \
-            -scheme "$MX_PIN_SCHEME" \
-            -configuration Debug \
-            -destination "$sim_dest" \
-            $PIN_BUILD_PARALLEL \
-            CODE_SIGNING_ALLOWED=NO \
-            RUN_CLANG_STATIC_ANALYZER=NO \
-            CLANG_COVERAGE_MAPPING=NO \
-            CLANG_COVERAGE_MAPPING_LINKER_ARGS= \
-            SWIFT_SERIALIZE_DEBUGGING_OPTIONS=NO \
-            ENABLE_PREVIEWS=NO \
-            ENABLE_TESTING_SEARCH_PATHS=NO \
-            build) 2>&1 | xcbeautify
-        status=$pipestatus[1]
-    fi
-    local elapsed=$(( SECONDS - start ))
-    if [ $status -eq 0 ]; then
-        echo "✅ Build succeeded in ${elapsed}s"
-        if [ $launch -eq 1 ]; then
-            echo "🚀 Launching on iPhone 14..."
-            local sim_id
-            sim_id=$(xcrun simctl list devices available | grep "iPhone 14 " | head -1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')
-            if [ -n "$sim_id" ]; then
-                xcrun simctl boot "$sim_id" 2>/dev/null
-                open -a Simulator
-                local app_path
-                app_path=$(find ~/Library/Developer/Xcode/DerivedData/Pinterest-*/Build/Products/Debug-iphonesimulator -name "PinterestDevelopment.app" -maxdepth 1 2>/dev/null | head -1)
-                if [ -n "$app_path" ]; then
-                    xcrun simctl install "$sim_id" "$app_path"
-                    xcrun simctl launch "$sim_id" com.pinterest.PinterestDevelopment
-                else
-                    echo "⚠️  App bundle not found in DerivedData — open Xcode and run manually"
-                fi
-            else
-                echo "⚠️  iPhone 14 simulator not found — create one in Xcode > Settings > Platforms"
-            fi
-        fi
-    else
-        echo "❌ Build failed in ${elapsed}s (exit code: $status)"
-    fi
-    return $status
-}
+alias fastbuild='mb'
 
 # mb — build CLI espelhando `mx` (PinterestDevelopment, sim iPhone 14) sem abrir o Xcode.
 #   mb                 -> build $MX_PIN_SCHEME (PinterestDevelopment)
