@@ -41,14 +41,7 @@ bind % split-window -h -c "#{pane_current_path}"
 
 set -g mouse on
 
-# single-click to focus pane (sem precisar 2 cliques).
-# Se o pane clicado já está ativo E o app usa mouse, repassa o evento ao app.
-# Caso contrário, apenas troca o foco — sem repassar — para evitar que o app
-# consuma o clique antes do tmux registrar a troca de foco.
-bind -n MouseDown1Pane \
-    if -F "#{&&:#{==:#{mouse_pane},#{pane_id}},#{||:#{mouse_any_flag},#{pane_in_mode}}}" \
-        "send-keys -M" \
-        "select-pane -t=#{mouse_pane}"
+# single-click troca de pane. Default do tmux já faz isso — não sobrescrever.
 bind -n MouseDrag1Border resize-pane -M
 
 set -g base-index 1
