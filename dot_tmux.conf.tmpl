@@ -41,7 +41,11 @@ bind % split-window -h -c "#{pane_current_path}"
 
 set -g mouse on
 
-# single-click troca de pane. Default do tmux já faz isso — não sobrescrever.
+# single-click troca de pane.
+# Workaround p/ Ghostty+tmux: o terminal "rouba" o primeiro MouseDown,
+# então fazemos o switch no MouseUp1Pane (release) que sempre chega.
+# ref: github.com/ghostty-org/ghostty/discussions/11342
+bind -n MouseUp1Pane select-pane -t=
 bind -n MouseDrag1Border resize-pane -M
 
 set -g base-index 1
