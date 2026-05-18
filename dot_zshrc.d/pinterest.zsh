@@ -20,8 +20,8 @@ MX_DEEP_CLEAN_BUILD_EVERY_MX="${MX_DEEP_CLEAN_BUILD_EVERY_MX:-0}"
 #   DerivedData total: cap soft, mxc só avisa. ~30-50 GB por workspace ativo + 14 GB ModuleCache.
 #   Tuist binaries (~/.cache/tuist/Binaries): cap. Acima disso, mxc trim corre tuist clean binaries.
 #   DD stale: dias sem mtime que marca um Pinterest-<hash> como podável (poda manual via mxc trim).
-MX_DD_CAP_GB="${MX_DD_CAP_GB:-300}"
-MX_TUIST_BIN_CAP_GB="${MX_TUIST_BIN_CAP_GB:-50}"
+MX_DD_CAP_GB="${MX_DD_CAP_GB:-500}"
+MX_TUIST_BIN_CAP_GB="${MX_TUIST_BIN_CAP_GB:-80}"
 MX_DD_STALE_DAYS="${MX_DD_STALE_DAYS:-30}"
 # Avisar pra correr `mxw` se binary cache não foi tocado em N dias (warm pre-emptive).
 MX_WARM_STALE_DAYS="${MX_WARM_STALE_DAYS:-14}"
@@ -384,8 +384,27 @@ on run argv
             if not schemeOK then delay 0.45
         end repeat
         if not schemeOK then return "no_scheme"
+        -- Wait for run destinations to resolve (Xcode needs time after scheme selection)
         tell foundDoc
-            -- "run" is an AppleScript keyword; "in run destinations" parses as "run" command — use get.
+            set destReady to false
+            repeat with waitN from 1 to 30
+                if destReady then exit repeat
+                try
+                    set dests to (get run destinations)
+                    if (count of dests) > 0 then
+                        repeat with d in dests
+                            try
+                                if (platform of d as text) is "iphonesimulator" then
+                                    set destReady to true
+                                    exit repeat
+                                end if
+                            end try
+                        end repeat
+                    end if
+                end try
+                if not destReady then delay 0.5
+            end repeat
+            if not destReady then return "no_destination"
             repeat with mxDest in (get run destinations)
                 try
                     if (platform of mxDest as text) is "iphonesimulator" and (name of mxDest as text) contains simSubstr then
@@ -625,7 +644,7 @@ _mx_fn() {
     _mx_maybe_reset_build_for_new_head "$_repo" "$_ws"
 
     echo "✓ mx: a definir scheme $_scheme + sim ($MX_PIN_SIM_SUBSTR)…"
-    sleep 0.5
+    sleep 1.5
     local _asr _ose
     _ose=$(mktemp "${TMPDIR:-/tmp}/mx-osa-err.XXXXXX")
     _asr=$(_mx_xcode_set_scheme_and_destination "$_ws" "$_scheme" 2>"$_ose" | head -1 | tr -d '\r') || true
@@ -1124,7 +1143,16 @@ _mxs_status() {
     local keys=(
         IDEBuildOperationMaxNumberOfConcurrentCompileTasks
         IDEBuildOperationMaxNumberOfConcurrentLinkTasks
+        IDEBuildOperationQueueDepth
         IDEPackageOnlyUseVersionsFromResolvedFile
+        IDESkipMacroFingerprintValidation
+        IDESkipPackagePluginFingerprintValidation
+        BuildSystemScheduleInherentlyParallelCommandsExclusively
+        IDEBuildingContinueBuildingAfterErrors
+        IDEIssueNavigatorShowsLiveIssues
+        IDEFileSystemSynchronizedGroupsEnabled
+        IDESourceControlAutomaticallyAddNewFiles
+        IDEPreviewsAdditionalDisableReason
     )
     echo "🛠  mxs status:"
     echo "  CPU:                 $(sysctl -n hw.physicalcpu) physical / $(sysctl -n hw.logicalcpu) logical"
@@ -1180,8 +1208,46 @@ _mxs_apply() {
     echo "    ✓ IDEDisableStateRestoration removido (scheme/destination persistem entre sessões)"
     defaults write com.apple.dt.Xcode IDEPackageOnlyUseVersionsFromResolvedFile -bool YES
     echo "    ✓ IDEPackageOnlyUseVersionsFromResolvedFile = YES (não auto-resolve SPM)"
+    defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+    echo "    ✓ IDESkipMacroFingerprintValidation = YES (skip re-validação macros)"
+    defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
+    echo "    ✓ IDESkipPackagePluginFingerprintValidation = YES (skip re-validação plugins)"
     defaults write NSGlobalDomain NSAppSleepDisabled -bool YES
     echo "    ✓ NSAppSleepDisabled = YES (Xcode não throttle em background)"
+
+    # Build system / compiler tuning
+    defaults write com.apple.dt.Xcode BuildSystemScheduleInherentlyParallelCommandsExclusively -bool NO
+    echo "    ✓ BuildSystemScheduleInherentlyParallelCommandsExclusively = NO (mais paralelismo)"
+    defaults write com.apple.dt.Xcode IDEBuildOperationQueueDepth -int "$ncpu"
+    echo "    ✓ IDEBuildOperationQueueDepth = $ncpu"
+    defaults write com.apple.dt.Xcode IDEBuildingContinueBuildingAfterErrors -bool NO
+    echo "    ✓ IDEBuildingContinueBuildingAfterErrors = NO (para no 1º erro, evita trabalho perdido)"
+
+    # SwiftUI Previews — Pinterest não usa, desliga infra de preview que indexa em background
+    defaults write com.apple.dt.Xcode IDEPreviewsAdditionalDisableReason -string "Disabled by mxs apply: Pinterest does not use SwiftUI Previews"
+    echo "    ✓ IDEPreviewsAdditionalDisableReason setado (Previews desligados)"
+
+    # Indexing tuning — manter ligado mas com queue priority menor
+    defaults write com.apple.dt.Xcode IDEIndexShowLog -bool NO
+    defaults write com.apple.dt.Xcode IDEIndexerActivityShowNumericProgress -bool YES
+    echo "    ✓ Indexing log silencioso + progress numérico"
+
+    # Live issues — pesa em arquivos grandes (PIPinNodeController.m, etc). Mantém issue navigator.
+    defaults write com.apple.dt.Xcode IDEIssueNavigatorShowsLiveIssues -bool NO
+    echo "    ✓ IDEIssueNavigatorShowsLiveIssues = NO (live diagnostics off — usa build pra ver erros)"
+
+    # Source control — desliga auto-fetch que segura main thread do Xcode
+    defaults write com.apple.dt.Xcode IDESourceControlAutomaticallyAddNewFiles -bool NO
+    defaults write com.apple.dt.Xcode IDESourceControlEnableSourceControlForNewProjects -bool NO
+    echo "    ✓ Source control auto-fetch off (usa git CLI em vez)"
+
+    # File system synchronized groups (Xcode 16+) — desligar acelera project load
+    defaults write com.apple.dt.Xcode IDEFileSystemSynchronizedGroupsEnabled -bool NO 2>/dev/null
+    echo "    ✓ IDEFileSystemSynchronizedGroupsEnabled = NO (Xcode 16+ FS sync off)"
+
+    # XCBBuildService — habilita novo build system explícito (default já é YES em Xcode 16, mas garante)
+    defaults write com.apple.dt.Xcode IDEPackageEnableSwiftPackageManager -bool YES
+    echo "    ✓ IDEPackageEnableSwiftPackageManager = YES"
 
     echo "✅ mxs apply concluído. Reinicia Xcode pra apanhar defaults."
 }
@@ -1394,7 +1460,7 @@ alias gpp=' arc lint --apply-patches && gpff'
 alias vim=nvim
 
 NCPU=16
-PIN_BUILD_PARALLEL="-parallelizeTargets -jobs $NCPU ONLY_ACTIVE_ARCH=YES ARCHS=arm64 COMPILER_INDEX_STORE_ENABLE=NO"
+PIN_BUILD_PARALLEL="-parallelizeTargets -jobs $NCPU ONLY_ACTIVE_ARCH=YES ARCHS=arm64 COMPILER_INDEX_STORE_ENABLE=NO DEBUG_INFORMATION_FORMAT=dwarf"
 
 export IDEBuildOperationMaxNumberOfConcurrentCompileTasks=16
 export IDEBuildOperationMaxNumberOfConcurrentLinkTasks=16
@@ -1783,6 +1849,127 @@ mtt() {
         echo "❌ mtt: $scheme failed in ${elapsed}s (exit $rc)"
     fi
     return $rc
+}
+
+# ============================================================================
+
+# ============================================================================
+# Worktree helpers (parallel task workflow)
+# ============================================================================
+#
+# Layout:
+#   ~/Developer/fission/         ← worktree principal (master)
+#   ~/Developer/fission-wt/
+#     ├── CPIOS-XXXXX/           ← um worktree por task
+#     └── ...
+#
+# Workflow:
+#   mxnew CPIOS-24500 TimeSpent  # cria wt + cd + mx <Module>
+#   mxnew CPIOS-24500            # cria wt + cd + mx (PinterestDevelopment)
+#   mxdone CPIOS-24500           # remove wt + branch (após merge)
+#   mxls                         # lista worktrees ativos
+#
+# Cada worktree tem seu próprio DerivedData (hash do path). Use `mxw` no
+# primeiro build pra puxar binary cache do Tuist Cloud.
+
+_mx_fission_root() { echo "$HOME/Developer/ios"; }
+_mx_fission_wt_root() { echo "$HOME/Developer/fission-wt"; }
+
+mxnew() {
+    local ticket="$1"
+    local module="$2"
+
+    if [[ -z "$ticket" ]]; then
+        echo "usage: mxnew <TICKET> [<Module>]"
+        echo "  ex: mxnew CPIOS-24500 TimeSpent"
+        return 1
+    fi
+
+    local root=$(_mx_fission_root)
+    local wt_root=$(_mx_fission_wt_root)
+    local wt_path="$wt_root/$ticket"
+    local branch="pruypugliesi/$ticket"
+
+    if [[ ! -d "$root" ]]; then
+        echo "❌ mxnew: $root não existe" >&2
+        return 1
+    fi
+
+    if [[ -d "$wt_path" ]]; then
+        echo "⚠️  mxnew: worktree já existe em $wt_path — entrando" >&2
+        cd "$wt_path" || return 1
+        return 0
+    fi
+
+    mkdir -p "$wt_root" || return 1
+
+    echo "→ mxnew: fetch origin master…"
+    git -C "$root" fetch origin master || return 1
+
+    echo "→ mxnew: criando worktree $wt_path (branch $branch)…"
+    git -C "$root" worktree add "$wt_path" -b "$branch" origin/master || return 1
+
+    cd "$wt_path" || return 1
+
+    if [[ -n "$module" ]]; then
+        echo "→ mxnew: mx $module"
+        mx "$module"
+    else
+        echo "→ mxnew: mx (PinterestDevelopment)"
+        mx
+    fi
+}
+
+mxdone() {
+    local ticket="$1"
+    local force="$2"
+
+    if [[ -z "$ticket" ]]; then
+        echo "usage: mxdone <TICKET> [--force]"
+        return 1
+    fi
+
+    local root=$(_mx_fission_root)
+    local wt_root=$(_mx_fission_wt_root)
+    local wt_path="$wt_root/$ticket"
+    local branch="pruypugliesi/$ticket"
+
+    if [[ ! -d "$wt_path" ]]; then
+        echo "❌ mxdone: worktree não existe em $wt_path" >&2
+        return 1
+    fi
+
+    if [[ "$PWD" == "$wt_path"* ]]; then
+        echo "→ mxdone: saindo de $wt_path (cd $root)"
+        cd "$root" || return 1
+    fi
+
+    echo "→ mxdone: removendo worktree $wt_path…"
+    if [[ "$force" == "--force" ]]; then
+        git -C "$root" worktree remove --force "$wt_path" || return 1
+    else
+        git -C "$root" worktree remove "$wt_path" 2>/dev/null || {
+            echo "⚠️  worktree tem mudanças locais; use 'mxdone $ticket --force' p/ descartar"
+            return 1
+        }
+    fi
+
+    echo "→ mxdone: removendo branch $branch…"
+    if ! git -C "$root" branch -d "$branch" 2>/dev/null; then
+        echo "⚠️  branch $branch não mergeada — mantida. Use 'git -C $root branch -D $branch' p/ forçar."
+    fi
+
+    if command -v mxc >/dev/null 2>&1; then
+        echo "→ mxdone: mxc dd-dedupe"
+        mxc dd-dedupe 2>/dev/null
+    fi
+
+    echo "✅ mxdone: $ticket limpo"
+}
+
+mxls() {
+    local root=$(_mx_fission_root)
+    git -C "$root" worktree list
 }
 
 # ============================================================================
