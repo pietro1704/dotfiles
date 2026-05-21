@@ -86,3 +86,9 @@
 [rerere]
 	enabled = true
 	autoupdate = true
+{{ if eq .profile "work" -}}
+[maintenance]
+	repo = /Users/pruypugliesi/Developer/fission-wt/working1
+	repo = /Users/pruypugliesi/Developer/ios
+	repo = /Users/pruypugliesi/Developer/fission-wt/working2
+{{- end }}
