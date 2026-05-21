@@ -409,6 +409,7 @@ export WATCHMAN_MAX_DEPTH=10
 # Bloco extenso — separado em ~/.zshrc.d/pinterest.zsh (gerido pelo chezmoi, profile=work).
 {{ if eq .profile "work" -}}
 [ -f "$HOME/.zshrc.d/pinterest.zsh" ] && source "$HOME/.zshrc.d/pinterest.zsh"
+[ -f "$HOME/.zshrc.d/git-worktree-p10k.zsh" ] && source "$HOME/.zshrc.d/git-worktree-p10k.zsh"
 {{- end }}
 {{ end -}}
 
