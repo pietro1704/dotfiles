@@ -1,0 +1,6 @@
+[Unit]
+Description=Apply safe PS2 VMC backup retention
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/pips/Developer/docker/scripts/ps2-vmc-retention.py --apply

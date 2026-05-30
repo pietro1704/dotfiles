@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly safe PS2 VMC backup retention
+
+[Timer]
+OnCalendar=Sun *-*-* 11:10:00
+Persistent=true
+AccuracySec=10m
+Unit=ps2-vmc-retention.service
+
+[Install]
+WantedBy=timers.target
