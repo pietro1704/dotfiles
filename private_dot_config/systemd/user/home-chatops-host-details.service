@@ -1,0 +1,6 @@
+[Unit]
+Description=Generate host-side details for PipsBot ChatOps
+
+[Service]
+Type=oneshot
+ExecStart=/home/pips/Developer/docker/scripts/home-chatops-host-details.sh

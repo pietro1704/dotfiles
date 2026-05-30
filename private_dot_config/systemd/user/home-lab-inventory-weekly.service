@@ -1,0 +1,6 @@
+[Unit]
+Description=Weekly versioned home-lab inventory snapshot
+
+[Service]
+Type=oneshot
+ExecStart=/home/pips/Developer/docker/scripts/home-chatops-host-details.sh all

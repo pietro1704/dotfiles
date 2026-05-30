@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll PipsBot ChatOps host-side detail requests
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=home-chatops-host-details.service
+
+[Install]
+WantedBy=timers.target

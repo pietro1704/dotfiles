@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly versioned home-lab inventory snapshot
+
+[Timer]
+OnCalendar=Sun *-*-* 10:35:00
+Persistent=true
+AccuracySec=5m
+Unit=home-lab-inventory-weekly.service
+
+[Install]
+WantedBy=timers.target
