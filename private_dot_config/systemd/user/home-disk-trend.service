@@ -1,0 +1,6 @@
+[Unit]
+Description=Track home disk growth trend and alert on large growth
+
+[Service]
+Type=oneshot
+ExecStart=/home/pips/Developer/docker/scripts/home-chatops-host-details.sh trend

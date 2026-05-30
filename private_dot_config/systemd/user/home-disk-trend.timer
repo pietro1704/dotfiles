@@ -1,0 +1,12 @@
+[Unit]
+Description=Track home disk growth trend periodically
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Persistent=true
+AccuracySec=5m
+Unit=home-disk-trend.service
+
+[Install]
+WantedBy=timers.target
