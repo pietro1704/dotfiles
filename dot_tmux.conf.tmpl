@@ -64,7 +64,9 @@ bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy
 bind -T copy-mode-vi y              send-keys -X copy-pipe-and-cancel "if [ -n \"$WAYLAND_DISPLAY\" ]; then wl-copy; else cat > /dev/null; fi"
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "if [ -n \"$WAYLAND_DISPLAY\" ]; then wl-copy; else cat > /dev/null; fi"
 {{ end -}}
-bind -T copy-mode-vi MouseDown1Pane select-pane \; send-keys -X cancel
+# Não cancele copy-mode/scrollback ao clicar dentro do pane: isso pulava de volta
+# para o fim da tela. Deixe o binding padrão do tmux cuidar do clique.
+unbind -T copy-mode-vi MouseDown1Pane
 bind P paste-buffer
 
 bind r source-file ~/.tmux.conf \; display-message "~/.tmux.conf reloaded."
