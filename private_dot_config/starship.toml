@@ -19,7 +19,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 format = """
-[](fg:#cccccc)\
 $os\
 [](fg:#cccccc bg:#0066cc)\
 $directory\
@@ -29,7 +28,6 @@ $git_status\
 $git_state\
 [](fg:#00cc00)\
 $fill\
-[](fg:#cccc00)\
 $cmd_duration\
 $status\
 $jobs\
@@ -39,9 +37,7 @@ $azure\
 $gcloud\
 $username\
 $hostname\
-[](fg:#cccccc bg:#000000)\
 $time\
-[](fg:#cccccc)\
 """
 
 right_format = ""
@@ -218,7 +214,7 @@ format = "[$ssh_symbol$hostname ]($style)"
 disabled = false
 style = "fg:#000000 bg:#cccccc"
 time_format = "%H:%M:%S"
-format = "[ at $time ]($style)"
+format = "[](fg:#cccccc bg:#000000)[ at $time ]($style)[](fg:#cccccc)"
 utc_time_offset = "local"
 
 # ── Disable: prompt char (p10k disables it) ──────────────────────────────────
