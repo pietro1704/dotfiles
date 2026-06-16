@@ -61,16 +61,16 @@ style = "fg:#080808 bg:#cccccc"
 format = "[ $symbol ]($style)"
 
 [os.symbols]
-Macos      = ""
-Linux      = ""
-Arch       = ""
-Ubuntu     = ""
-Debian     = ""
-Fedora     = ""
-Alpine     = ""
-Redhat     = ""
-Windows    = ""
-Unknown    = ""
+Macos      = ""
+Linux      = ""
+Arch       = ""
+Ubuntu     = ""
+Debian     = ""
+Fedora     = ""
+Alpine     = ""
+Redhat     = ""
+Windows    = ""
+Unknown    = ""
 
 # ── dir: bg=4 fg=254, anchor fg=255 ───────────────────────────────────────────
 [directory]
@@ -79,9 +79,9 @@ format = "[ $path ]($style)"
 truncation_length = 3
 truncation_symbol = ""
 truncate_to_repo = false
-read_only = "  "
+read_only = "  "
 read_only_style = "fg:#cccc00 bg:#0066cc"
-home_symbol = " ~"
+home_symbol = " ~"
 
 [directory.substitutions]
 "Documents"  = "  "
@@ -94,7 +94,7 @@ home_symbol = " ~"
 
 # ── vcs: clean=bg2 ────────────────────────────────────────────────────────────
 [git_branch]
-symbol = ""
+symbol = ""
 style = "fg:#000000 bg:#00cc00"
 format = "[on $symbol $branch]($style)"
 truncation_length = 32
@@ -153,10 +153,10 @@ pipestatus = true
 [jobs]
 disabled = false
 style = "fg:#00cccc bg:#000000"
-symbol = ""
+symbol = ""
 symbol_threshold = 1
 number_threshold = 2
-format = "[  $number ]($style)"
+format = "[ $symbol $number ]($style)"
 
 # ── language version segments: disabled by default (use `node -v` etc.) ──────
 # Re-enable per-segment if you actively want a specific runtime version
@@ -181,21 +181,21 @@ format = '[ $symbol $context( \($namespace\)) ]($style)'
 [aws]
 disabled = false
 style = "fg:#cccccc bg:#cc0000"
-symbol = ""
+symbol = ""
 format = '[ $symbol $profile(@$region) ]($style)'
 
 # ── azure: bg=4 fg=7 ─────────────────────────────────────────────────────────
 [azure]
 disabled = false
 style = "fg:#cccccc bg:#0066cc"
-symbol = ""
+symbol = "ﴃ"
 format = "[ $symbol $subscription ]($style)"
 
 # ── gcloud: bg=4 fg=7 ────────────────────────────────────────────────────────
 [gcloud]
 disabled = false
 style = "fg:#cccccc bg:#0066cc"
-symbol = ""
+symbol = ""
 format = '[ $symbol $account@$project ]($style)'
 
 # ── username/hostname (only root or SSH): bg=0 fg=3 ──────────────────────────
