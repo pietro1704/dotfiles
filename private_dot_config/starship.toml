@@ -1,16 +1,16 @@
 "$schema" = "https://starship.rs/config-schema.json"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Powerlevel10k rainbow → Starship 1:1 migration
+# Powerlevel10k rainbow → Starship 1:1 migration (round-corner variant)
 #
-# Source of truth: ~/.p10k.zsh (wizard nerdfont-v3 + powerline, rainbow,
-# sharp heads, flat tails, 1 line, compact). Generated 2026-01-22.
+# Source: ~/.p10k.zsh (nerdfont-v3 + powerline, rainbow, 1 line, compact).
+# Variant: rounded caps via  (left half-circle) and  (right
+# half-circle) instead of sharp triangles.
 #
 # Layout:
-#   LEFT  : os_icon → dir → vcs
-#   RIGHT : status / cmd_duration / jobs / virtualenv / pyenv / nvm /
-#           rbenv / kubecontext / aws / azure / gcloud / context /
-#           jobs / time
+#   LEFT  : os_icon → dir → git
+#   RIGHT : status / cmd_duration / jobs / python / nodejs / ruby /
+#           kube / aws / azure / gcloud / context / time
 #
 # Color map (ANSI 256 → hex):
 #   0=#000000  1=#cc0000  2=#00cc00  3=#cccc00  4=#0066cc  5=#cc00cc
@@ -29,9 +29,9 @@ $git_status\
 $git_state\
 [](fg:#00cc00)\
 $fill\
-[](fg:#cccccc)\
-$status\
+[](fg:#cccc00)\
 $cmd_duration\
+$status\
 $jobs\
 $python\
 $nodejs\
@@ -42,6 +42,7 @@ $azure\
 $gcloud\
 $username\
 $hostname\
+[](fg:#cccccc bg:#000000)\
 $time\
 [](fg:#cccccc)\
 """
@@ -52,11 +53,11 @@ command_timeout = 2000
 scan_timeout = 30
 continuation_prompt = "[❯❯ ](fg:#666666)"
 
-# ── Filler between left and right ────────────────────────────────────────────
+# ── Filler ────────────────────────────────────────────────────────────────────
 [fill]
 symbol = " "
 
-# ── os_icon: bg=7 (white) fg=232 (very dark) ────────────────────────────────
+# ── os_icon: bg=7 fg=232 ──────────────────────────────────────────────────────
 [os]
 disabled = false
 style = "fg:#080808 bg:#cccccc"
@@ -70,40 +71,37 @@ Ubuntu     = ""
 Debian     = ""
 Fedora     = ""
 Alpine     = ""
-Windows    = ""
 Redhat     = ""
+Windows    = ""
+Unknown    = ""
 
-# ── dir: bg=4 (blue) fg=254 (light gray), anchor fg=255 ─────────────────────
+# ── dir: bg=4 fg=254, anchor fg=255 ───────────────────────────────────────────
 [directory]
 style = "fg:#e4e4e4 bg:#0066cc"
 format = "[ $path ]($style)"
 truncation_length = 3
 truncation_symbol = ""
 truncate_to_repo = false
-read_only = " "
-read_only_style = "fg:#cc0000 bg:#0066cc"
-home_symbol = "~"
+read_only = "  "
+read_only_style = "fg:#cccc00 bg:#0066cc"
+home_symbol = " ~"
 
 [directory.substitutions]
-"Documents"  = " "
-"Downloads"  = " "
-"Developer"  = " "
-"Music"      = " "
-"Pictures"   = " "
-"Movies"     = " "
-"Desktop"    = " "
+"Documents"  = "  "
+"Downloads"  = "  "
+"Developer"  = "  "
+"Music"      = "  "
+"Pictures"   = "  "
+"Movies"     = "  "
+"Desktop"    = "  "
 
-# ── vcs: clean=bg2 modified=bg3 untracked=bg2 conflicted=bg3 ────────────────
-# p10k uses different bg per state; Starship can't conditionally swap bg, so
-# we use modified-yellow when dirty (covers most cases) and clean-green when
-# nothing to report. This is the closest 1:1.
+# ── vcs: clean=bg2 ────────────────────────────────────────────────────────────
 [git_branch]
 symbol = ""
 style = "fg:#000000 bg:#00cc00"
 format = "[on $symbol $branch]($style)"
 truncation_length = 32
 truncation_symbol = "…"
-ignore_branches = []
 
 [git_status]
 style = "fg:#000000 bg:#00cc00"
@@ -131,12 +129,20 @@ bisect = "BISECT"
 am = "AM"
 am_or_rebase = "AM/REBASE"
 
-# ── status: ok=bg0/fg2 (green check) error=bg1/fg3 (yellow on red) ──────────
+# ── command_execution_time: leftmost on right side, bg=3 fg=0 ────────────────
+[cmd_duration]
+disabled = false
+min_time = 3_000
+show_milliseconds = false
+style = "fg:#000000 bg:#cccc00"
+format = "[ took $duration ]($style)[](fg:#cccc00 bg:#000000)"
+
+# ── status: ok=green check on bg0; error=yellow ✘ on bg1 ─────────────────────
 [status]
 disabled = false
 style = "fg:#cccc00 bg:#cc0000"
 symbol = "✘"
-success_symbol = "[ ✔ ](fg:#00cc00 bg:#000000)"
+success_symbol = "[  ](fg:#00cc00 bg:#000000)"
 not_executable_symbol = "[ ✘ ](fg:#cccc00 bg:#cc0000)"
 not_found_symbol = "[ ✘ ](fg:#cccc00 bg:#cc0000)"
 sigint_symbol = "[ ✘ ](fg:#cccc00 bg:#cc0000)"
@@ -146,15 +152,7 @@ recognize_signal_code = true
 map_symbol = true
 pipestatus = true
 
-# ── command_execution_time: bg=3 (yellow) fg=0 (black), threshold 3s ─────────
-[cmd_duration]
-disabled = false
-min_time = 3_000
-show_milliseconds = false
-style = "fg:#000000 bg:#cccc00"
-format = "[ took $duration ]($style)"
-
-# ── background_jobs: bg=0 (black) fg=6 (cyan) ───────────────────────────────
+# ── background_jobs: bg=0 fg=6 ───────────────────────────────────────────────
 [jobs]
 disabled = false
 style = "fg:#00cccc bg:#000000"
@@ -163,7 +161,7 @@ symbol_threshold = 1
 number_threshold = 2
 format = "[  $number ]($style)"
 
-# ── virtualenv / pyenv: bg=0 fg=6 ───────────────────────────────────────────
+# ── python (virtualenv + version): bg=0 fg=6 ─────────────────────────────────
 [python]
 disabled = false
 style = "fg:#00cccc bg:#000000"
@@ -172,7 +170,7 @@ format = '[  ${version}( \($virtualenv\)) ]($style)'
 detect_files = ["requirements.txt", "pyproject.toml", "Pipfile", "tox.ini", "setup.py", "__init__.py"]
 detect_extensions = ["py"]
 
-# ── nvm / nodenv: bg=0 fg=2 (green) ──────────────────────────────────────────
+# ── node: bg=0 fg=2 ──────────────────────────────────────────────────────────
 [nodejs]
 disabled = false
 style = "fg:#00cc00 bg:#000000"
@@ -181,47 +179,42 @@ format = "[  $version ]($style)"
 detect_files = ["package.json", ".node-version", ".nvmrc"]
 detect_folders = ["node_modules"]
 
-# ── rbenv / rvm: bg=0 fg=1 (red) ────────────────────────────────────────────
+# ── ruby: bg=0 fg=1 ──────────────────────────────────────────────────────────
 [ruby]
 disabled = false
 style = "fg:#cc0000 bg:#000000"
 symbol = ""
 format = "[  $version ]($style)"
 
-# ── kubecontext: bg=5 (magenta) fg=7 (white), only on kubectl-family cmds ──
-# Starship can't gate on typed command like p10k SHOW_ON_COMMAND; it only
-# detects via context name. We always show when in a kube context (closest fit).
+# ── kubecontext: bg=5 fg=7 ───────────────────────────────────────────────────
 [kubernetes]
 disabled = false
 style = "fg:#cccccc bg:#cc00cc"
-symbol = "☸"
-format = '[ at $symbol $context( \($namespace\)) ]($style)'
-detect_files = ["k8s"]
-detect_folders = []
+symbol = "󱃾"
+format = '[ $symbol $context( \($namespace\)) ]($style)'
 
-# ── aws: bg=1 (red) fg=7 (white), only on aws-family cmds ────────────────────
+# ── aws: bg=1 fg=7 ───────────────────────────────────────────────────────────
 [aws]
 disabled = false
 style = "fg:#cccccc bg:#cc0000"
-symbol = ""
+symbol = "󰸏"
 format = '[ $symbol $profile(@$region) ]($style)'
 
-# ── azure: bg=4 fg=7 ────────────────────────────────────────────────────────
+# ── azure: bg=4 fg=7 ─────────────────────────────────────────────────────────
 [azure]
 disabled = false
 style = "fg:#cccccc bg:#0066cc"
-symbol = ""
+symbol = "󰠅"
 format = "[ $symbol $subscription ]($style)"
 
-# ── gcloud: bg=4 fg=7 ───────────────────────────────────────────────────────
+# ── gcloud: bg=4 fg=7 ────────────────────────────────────────────────────────
 [gcloud]
 disabled = false
 style = "fg:#cccccc bg:#0066cc"
-symbol = ""
+symbol = "󱇶"
 format = '[ $symbol $account@$project ]($style)'
 
-# ── context (user@hostname): bg=0 fg=3, only on root or SSH ─────────────────
-# p10k hides DEFAULT/SUDO context (only renders if root or SSH).
+# ── username/hostname (only root or SSH): bg=0 fg=3 ──────────────────────────
 [username]
 disabled = false
 show_always = false
@@ -236,7 +229,7 @@ ssh_symbol = "@"
 style = "fg:#cccc00 bg:#000000"
 format = "[$ssh_symbol$hostname ]($style)"
 
-# ── time: bg=7 (white) fg=0 (black), 24h with seconds ───────────────────────
+# ── time: bg=7 fg=0 (rightmost segment) ──────────────────────────────────────
 [time]
 disabled = false
 style = "fg:#000000 bg:#cccccc"
@@ -244,13 +237,13 @@ time_format = "%H:%M:%S"
 format = "[ at $time ]($style)"
 utc_time_offset = "local"
 
-# ── Disable Starship's prompt char (p10k has it disabled too) ───────────────
+# ── Disable: prompt char (p10k disables it) ──────────────────────────────────
 [character]
 disabled = true
 success_symbol = ""
 error_symbol = ""
 
-# ── Disable segments p10k didn't render (avoid noise) ───────────────────────
+# ── Disable segments p10k didn't render ──────────────────────────────────────
 [battery]
 disabled = true
 
