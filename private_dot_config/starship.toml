@@ -33,9 +33,6 @@ $fill\
 $cmd_duration\
 $status\
 $jobs\
-$python\
-$nodejs\
-$ruby\
 $kubernetes\
 $aws\
 $azure\
@@ -49,7 +46,7 @@ $time\
 
 right_format = ""
 add_newline = false
-command_timeout = 2000
+command_timeout = 5000
 scan_timeout = 30
 continuation_prompt = "[❯❯ ](fg:#666666)"
 
@@ -132,7 +129,7 @@ am_or_rebase = "AM/REBASE"
 # ── command_execution_time: leftmost on right side, bg=3 fg=0 ────────────────
 [cmd_duration]
 disabled = false
-min_time = 3_000
+min_time = 10_000
 show_milliseconds = false
 style = "fg:#000000 bg:#cccc00"
 format = "[ took $duration ]($style)[](fg:#cccc00 bg:#000000)"
@@ -161,30 +158,17 @@ symbol_threshold = 1
 number_threshold = 2
 format = "[  $number ]($style)"
 
-# ── python (virtualenv + version): bg=0 fg=6 ─────────────────────────────────
+# ── language version segments: disabled by default (use `node -v` etc.) ──────
+# Re-enable per-segment if you actively want a specific runtime version
+# in every prompt; lazy-loaded mise/nvm/rbenv/pyenv made these mostly noise.
 [python]
-disabled = false
-style = "fg:#00cccc bg:#000000"
-symbol = ""
-format = '[  ${version}( \($virtualenv\)) ]($style)'
-detect_files = ["requirements.txt", "pyproject.toml", "Pipfile", "tox.ini", "setup.py", "__init__.py"]
-detect_extensions = ["py"]
+disabled = true
 
-# ── node: bg=0 fg=2 ──────────────────────────────────────────────────────────
 [nodejs]
-disabled = false
-style = "fg:#00cc00 bg:#000000"
-symbol = ""
-format = "[  $version ]($style)"
-detect_files = ["package.json", ".node-version", ".nvmrc"]
-detect_folders = ["node_modules"]
+disabled = true
 
-# ── ruby: bg=0 fg=1 ──────────────────────────────────────────────────────────
 [ruby]
-disabled = false
-style = "fg:#cc0000 bg:#000000"
-symbol = ""
-format = "[  $version ]($style)"
+disabled = true
 
 # ── kubecontext: bg=5 fg=7 ───────────────────────────────────────────────────
 [kubernetes]
