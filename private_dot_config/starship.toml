@@ -108,7 +108,7 @@ ahead = " ⇡$count"
 behind = " ⇣$count"
 diverged = " ⇣$behind_count⇡$ahead_count"
 up_to_date = ""
-untracked = " ?$count"
+untracked = " ?"
 stashed = " *$count"
 modified = " !$count"
 staged = " +$count"
@@ -174,28 +174,28 @@ disabled = true
 [kubernetes]
 disabled = false
 style = "fg:#cccccc bg:#cc00cc"
-symbol = "󱃾"
+symbol = "☸"
 format = '[ $symbol $context( \($namespace\)) ]($style)'
 
 # ── aws: bg=1 fg=7 ───────────────────────────────────────────────────────────
 [aws]
 disabled = false
 style = "fg:#cccccc bg:#cc0000"
-symbol = "󰸏"
+symbol = ""
 format = '[ $symbol $profile(@$region) ]($style)'
 
 # ── azure: bg=4 fg=7 ─────────────────────────────────────────────────────────
 [azure]
 disabled = false
 style = "fg:#cccccc bg:#0066cc"
-symbol = "󰠅"
+symbol = ""
 format = "[ $symbol $subscription ]($style)"
 
 # ── gcloud: bg=4 fg=7 ────────────────────────────────────────────────────────
 [gcloud]
 disabled = false
 style = "fg:#cccccc bg:#0066cc"
-symbol = "󱇶"
+symbol = ""
 format = '[ $symbol $account@$project ]($style)'
 
 # ── username/hostname (only root or SSH): bg=0 fg=3 ──────────────────────────
