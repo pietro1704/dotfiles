@@ -1,0 +1,115 @@
+"$schema" = "https://starship.rs/config-schema.json"
+
+format = """
+[](yellow)\
+[ $username ](fg:#262B44 bg:yellow)\
+[](fg:yellow bg:#F07623)\
+[ $directory ](fg:#E0DEF4 bg:#F07623)\
+[](fg:#F07623 bg:#59C9A5)\
+[ $git_branch$git_status ](fg:#262B44 bg:#59C9A5)\
+[](fg:#59C9A5 bg:#4B95E9)\
+[ $status ](fg:#E0DEF4 bg:#4B95E9)\
+[](fg:#4B95E9)\
+$fill\
+$nodejs$golang$python\
+[in ](fg:#E0DEF4)[$shell ](fg:#4B95E9 bold)\
+[at ](fg:#E0DEF4)[$time](fg:#4B95E9 bold) """
+
+right_format = ""
+add_newline = false
+command_timeout = 1000
+scan_timeout = 30
+
+[fill]
+symbol = " "
+
+[username]
+show_always = true
+style_user = "fg:#262B44 bg:yellow"
+style_root = "fg:#D81E5B bg:yellow"
+format = "[$user]($style)"
+
+[directory]
+style = "fg:#E0DEF4 bg:#F07623"
+format = "[$path]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+read_only = " "
+
+[directory.substitutions]
+"Documents" = " "
+"Downloads" = " "
+"Developer" = " "
+"Music" = " "
+"Pictures" = " "
+
+[git_branch]
+symbol = ""
+style = "fg:#262B44 bg:#59C9A5"
+format = "[$symbol $branch]($style)"
+truncation_length = 25
+truncation_symbol = ""
+
+[git_status]
+style = "fg:#262B44 bg:#59C9A5"
+format = '[$all_status$ahead_behind]($style)'
+conflicted = " ="
+ahead = " ⇡${count}"
+behind = " ⇣${count}"
+diverged = " ⇕⇡${ahead_count}⇣${behind_count}"
+up_to_date = ""
+untracked = " ?"
+stashed = " \\$"
+modified = "  ${count}"
+staged = "  ${count}"
+renamed = " »${count}"
+deleted = " ✘${count}"
+
+[status]
+disabled = false
+style = "fg:#E0DEF4 bg:#4B95E9"
+symbol = ""
+success_symbol = ""
+not_executable_symbol = ""
+not_found_symbol = ""
+sigint_symbol = ""
+signal_symbol = ""
+format = "[$symbol]($style)"
+map_symbol = true
+
+[nodejs]
+style = "fg:#59C9A5"
+format = "[$symbol ]($style)"
+symbol = ""
+detect_files = ["package.json", ".node-version", ".nvmrc"]
+detect_folders = ["node_modules"]
+
+[golang]
+style = "fg:#4B95E9"
+format = "[$symbol ]($style)"
+symbol = ""
+
+[python]
+style = "fg:#F3AE35"
+format = "[$symbol ]($style)"
+symbol = ""
+detect_files = ["requirements.txt", "pyproject.toml", "Pipfile", "tox.ini", "setup.py", "__init__.py"]
+
+[shell]
+disabled = false
+style = "fg:#4B95E9 bold"
+zsh_indicator = "zsh"
+bash_indicator = "bash"
+fish_indicator = "fish"
+powershell_indicator = "pwsh"
+unknown_indicator = "shell"
+format = "[$indicator]($style)"
+
+[time]
+disabled = false
+style = "fg:#4B95E9 bold"
+time_format = "%T"
+format = "[$time]($style)"
+
+[character]
+disabled = true
