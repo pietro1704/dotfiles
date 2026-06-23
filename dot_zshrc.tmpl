@@ -179,7 +179,8 @@ alias reload='source ~/.zshrc && clear'
 
 # ── Aliases — sistema ─────────────────────────────────────────────────────────
 {{ if eq .chezmoi.os "linux" -}}
-alias updateAll='sudo pacman -Syyu && yay -Syyu && sudo flatpak update && echo "✅ Tudo atualizado!"'
+# Mantém status de saída do script para o prompt (alias simples às vezes mascara isso em setups específicos)
+updateAll() { "$HOME/update-all.sh" "$@"; }
 alias clean='sudo pacman -Rns --noconfirm $(pacman -Qtdq) 2>/dev/null || echo "Nenhum órfão encontrado"'
 alias orphan='pacman -Qtdq'
 alias restartAudio='systemctl --user restart pipewire pipewire-pulse wireplumber'
