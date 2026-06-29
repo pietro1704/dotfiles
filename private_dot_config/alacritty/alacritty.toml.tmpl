@@ -40,8 +40,16 @@ decorations     = "Full"
 startup_mode    = "Windowed"
 dimensions      = { columns = 180, lines = 50 }
 option_as_alt   = "Both"
+<<<<<<< HEAD
 opacity         = 1.0
 blur            = false
+||||||| parent of ec20359 (perf: revert starship→p10k (gitstatusd async), tmux escape-time 0, solid alacritty)
+opacity         = 0.95
+blur            = true
+=======
+opacity         = 1.0   # was 0.95 — solid skips GPU compositing per frame
+blur            = false # was true  — same; smoother scrolling
+>>>>>>> ec20359 (perf: revert starship→p10k (gitstatusd async), tmux escape-time 0, solid alacritty)
 {{ else -}}
 decorations = "full"
 opacity     = 1.0

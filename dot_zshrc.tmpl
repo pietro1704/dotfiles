@@ -445,9 +445,10 @@ fi
 # ── Powerlevel10k config (mantém no fim; carrega ~/.p10k.zsh e evita o wizard) ──
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
-# ── Starship prompt ──────────────────────────────────────────────────────────
-# Faster than oh-my-posh / p10k; honors git worktrees natively.
-# Config: ~/.config/starship.toml
-if command -v starship >/dev/null 2>&1; then
-  eval "$(starship init zsh)"
-fi
+# ── Prompt note ──────────────────────────────────────────────────────────────
+# Starship was tried (commits cc42e55…8257bcb) but its `git_status` module
+# spends ~480ms/prompt in the Pinterest iOS repo. Reverted to p10k which uses
+# async gitstatusd (~0ms perceived). Config in ~/.p10k.zsh.
+# Window title (was set by starship init, now manual).
+function set_win_title() { print -Pn "\e]0;%~\a" }
+precmd_functions+=(set_win_title)
