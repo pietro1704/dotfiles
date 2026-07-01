@@ -41,17 +41,17 @@ bind % split-window -h -c "#{pane_current_path}"
 
 set -g mouse on
 
-# single-click troca de pane.
-# Workaround p/ Ghostty+tmux: o terminal "rouba" o primeiro MouseDown,
-# então fazemos o switch no MouseUp1Pane (release) que sempre chega.
-# ref: github.com/ghostty-org/ghostty/discussions/11342
+# Mouse: movimento simples não deve iniciar seleção do terminal.
+# Só focar no clique; seleção/copy só em clique+arrasto intencional dentro do tmux.
+# Em Ghostty, MouseUp1Pane é mais confiável para foco do que MouseDown1Pane.
 bind -n MouseUp1Pane select-pane -t=
+bind -n MouseDrag1Pane select-pane -t= \; copy-mode -M
 bind -n MouseDrag1Border resize-pane -M
 
 set -g base-index 1
-set -g history-limit 50000
+set -g history-limit 20000
 set -sg repeat-time 600
-set -sg escape-time 10
+set -sg escape-time 0
 set -g focus-events on
 
 setw -g mode-keys vi
@@ -67,7 +67,8 @@ bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "if [ -
 # Não cancele copy-mode/scrollback ao clicar dentro do pane: isso pulava de volta
 # para o fim da tela. Deixe o binding padrão do tmux cuidar do clique.
 unbind -T copy-mode-vi MouseDown1Pane
-bind P paste-buffer
+bind -T copy-mode-vi MouseDrag1Pane select-pane
+
 
 bind r source-file ~/.tmux.conf \; display-message "~/.tmux.conf reloaded."
 

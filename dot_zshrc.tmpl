@@ -67,7 +67,11 @@ path=(
 
 # ── Locale ────────────────────────────────────────────────────────────────────
 # LC_NUMERIC/LANG/LC_ALL definidos em .zshenv
-[[ -z "$TMUX" ]] && export TERM="xterm-256color"
+if [[ -z "$TMUX" ]]; then
+  export TERM="xterm-256color"
+else
+  export TERM="tmux-256color"
+fi
 {{ if eq .chezmoi.os "darwin" -}}
 export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
 unset OVERRIDE_XCODE
@@ -186,7 +190,56 @@ alias orphan='pacman -Qtdq'
 alias restartAudio='systemctl --user restart pipewire pipewire-pulse wireplumber'
 alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2>/dev/null | head -1); QT_QPA_PLATFORM=xcb designer'
 {{ else if eq .chezmoi.os "darwin" -}}
-alias updateAll='brew upgrade && brew upgrade --cask --greedy && brew cleanup && omz update'
+updateAll() {
+  brew update || return 1
+
+  local outdated_formulae="$(brew outdated --formula --quiet)"
+  if print -r -- "$outdated_formulae" | grep -qx 'xcodes'; then
+    echo '· Pulando xcodes no brew upgrade: 2.0.2 exige Xcode >= 16.4 e este Mac está no Xcode 26.3'
+    local formulae_without_xcodes
+    formulae_without_xcodes=(${(f)$(print -r -- "$outdated_formulae" | grep -vx 'xcodes')})
+    (( ${#formulae_without_xcodes[@]} )) && brew upgrade "${formulae_without_xcodes[@]}" || true
+  else
+    brew upgrade || return 1
+  fi
+
+  HOMEBREW_NO_INSTALL_UPGRADE=1 brew upgrade --cask --greedy || return 1
+  brew cleanup || return 1
+  omz update || return 1
+
+  local hermes_dir="$HOME/.hermes/hermes-agent"
+  local hermes_py="$hermes_dir/venv/bin/python"
+
+  if [[ -d "$hermes_dir/.git" && -x "$hermes_py" ]]; then
+    echo "→ Atualizando Hermes sem reiniciar sessões abertas..."
+
+    if git -C "$hermes_dir" diff --quiet && git -C "$hermes_dir" diff --cached --quiet; then
+      git -C "$hermes_dir" fetch origin main || return 1
+      local before upstream after
+      before=$(git -C "$hermes_dir" rev-parse --short HEAD 2>/dev/null || echo unknown)
+      upstream=$(git -C "$hermes_dir" rev-parse --short origin/main 2>/dev/null || echo unknown)
+
+      if [[ "$before" != "$upstream" ]]; then
+        git -C "$hermes_dir" pull --ff-only origin main || return 1
+      fi
+
+      if command -v uv >/dev/null 2>&1; then
+        (cd "$hermes_dir" && uv pip install --python "$hermes_py" -e '.[all,dev]') || {
+          "$hermes_py" -m ensurepip --upgrade && "$hermes_py" -m pip install -e "$hermes_dir[all,dev]";
+        } || return 1
+      else
+        "$hermes_py" -m ensurepip --upgrade && "$hermes_py" -m pip install -e "$hermes_dir[all,dev]" || return 1
+      fi
+
+      after=$(git -C "$hermes_dir" rev-parse --short HEAD 2>/dev/null || echo "$upstream")
+      echo "✓ Hermes: $before -> $after"
+      "$hermes_dir/venv/bin/hermes" --version | head -n 1
+      echo "· Sessões já abertas continuam até você reiniciar cada processo"
+    else
+      echo "· Hermes com mudanças locais; pulando git pull para evitar conflito"
+    fi
+  fi
+}
 alias vim=nvim
 [ -n "$HOMEBREW_PREFIX" ] && alias ctags="$HOMEBREW_PREFIX/bin/ctags"
 alias shopt='/usr/bin/shopt'
@@ -312,8 +365,7 @@ fuck() {
 }
 
 {{ if eq .chezmoi.os "darwin" -}}
-# ── macOS: SSH Keychain (async em background, não bloqueia prompt) ────────────
-(ssh-add --apple-use-keychain ~/.ssh/id_ed25519 &) > /dev/null 2>&1
+# ── macOS: SSH Keychain (lazy no primeiro prompt) ─────────────────────────────
 
 # ── macOS: OpenSSL para gems ──────────────────────────────────────────────────
 if [ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/openssl@3" ]; then
@@ -358,4 +410,13 @@ elif [ -z "$SSH_AUTH_SOCK" ] && command -v ssh-agent >/dev/null 2>&1; then
   ssh-add ~/.ssh/id_ed25519 2>/dev/null
 fi
 {{ end -}}
-[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+
+if [[ "$OSTYPE" == darwin* ]]; then
+  _ssh_keychain_bootstrap_done=0
+  _start_ssh_keychain_once() {
+    (( _ssh_keychain_bootstrap_done )) && return
+    _ssh_keychain_bootstrap_done=1
+    command ssh-add --apple-load-keychain ~/.ssh/id_ed25519 >/dev/null 2>&1 || true
+  }
+  _start_ssh_keychain_once
+fi
