@@ -226,12 +226,10 @@ updateAll() {
     LANG= ZSH="$ZSH" zsh -f "$ZSH/tools/upgrade.sh" || echo '· oh-my-zsh: update falhou (ignorado)'
   fi
 
-  # mise: só atualiza o próprio binário; NÃO recompila runtimes (ruby/flutter
-  # do zero toda vez). Runtimes: rodar `mise upgrade` manualmente quando quiser.
-  if command -v mise >/dev/null 2>&1; then
-    echo '→ Atualizando mise (binário)...'
-    mise self-update --yes 2>/dev/null || echo '· mise: self-update falhou (ignorado)'
-  fi
+  # mise: o binário vem do brew (self-update não funciona — "installed via a
+  # package manager"), então `brew upgrade` acima já o mantém atualizado.
+  # Runtimes (node/ruby/flutter): rodar `mise upgrade` manualmente quando quiser
+  # — evita recompilar do zero a cada updateAll.
 
   if command -v claude >/dev/null 2>&1; then
     echo '→ Atualizando Claude Code...'
