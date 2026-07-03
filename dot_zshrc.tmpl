@@ -216,11 +216,26 @@ updateAll() {
 
   HOMEBREW_NO_INSTALL_UPGRADE=1 brew upgrade --cask --greedy || return 1
   brew cleanup || return 1
-  omz update --unattended || return 1
+
+  # A partir daqui, falha de uma etapa não aborta as demais: queremos
+  # atualizar TUDO mesmo que um componente individual falhe.
+
+  # oh-my-zsh (o flag --unattended foi removido; upgrade.sh sem -i é não-interativo)
+  if [[ -x "$ZSH/tools/upgrade.sh" ]]; then
+    echo '→ Atualizando oh-my-zsh...'
+    LANG= ZSH="$ZSH" zsh -f "$ZSH/tools/upgrade.sh" || echo '· oh-my-zsh: update falhou (ignorado)'
+  fi
+
+  # mise: só atualiza o próprio binário; NÃO recompila runtimes (ruby/flutter
+  # do zero toda vez). Runtimes: rodar `mise upgrade` manualmente quando quiser.
+  if command -v mise >/dev/null 2>&1; then
+    echo '→ Atualizando mise (binário)...'
+    mise self-update --yes 2>/dev/null || echo '· mise: self-update falhou (ignorado)'
+  fi
 
   if command -v claude >/dev/null 2>&1; then
     echo '→ Atualizando Claude Code...'
-    claude update || return 1
+    claude update || echo '· Claude Code: update falhou (ignorado)'
   fi
 
   # Hermes update/check removido do updateAll: no Mac ele pode recriar o venv/repo
@@ -229,17 +244,19 @@ updateAll() {
   if command -v tmux >/dev/null 2>&1 && [[ -x "$HOME/.tmux/plugins/tpm/bin/install_plugins" ]]; then
     echo '→ Atualizando plugins do tmux...'
     tmux start-server
-    "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null || return 1
+    "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null || echo '· tmux plugins: install falhou (ignorado)'
     if [[ -d "$HOME/.tmux/plugins/tpm/.git" ]]; then
-      git -C "$HOME/.tmux/plugins/tpm" pull --ff-only || return 1
+      git -C "$HOME/.tmux/plugins/tpm" pull --ff-only || true
     fi
     local plugin_dir
     for plugin_dir in "$HOME"/.tmux/plugins/*; do
       [[ -d "$plugin_dir/.git" ]] || continue
-      git -C "$plugin_dir" pull --ff-only || return 1
+      git -C "$plugin_dir" pull --ff-only || true
     done
     tmux run-shell "$HOME/.tmux/plugins/tpm/scripts/clean_plugins.sh" >/dev/null 2>&1 || true
   fi
+
+  echo '✓ updateAll concluído'
 }
 alias vim=nvim
 [ -n "$HOMEBREW_PREFIX" ] && alias ctags="$HOMEBREW_PREFIX/bin/ctags"
@@ -395,7 +412,8 @@ export WATCHMAN_MAX_DEPTH=10
 {{ end -}}
 
 # ── Powerlevel10k theme ───────────────────────────────────────────────────────
-# darwin: OMZ carrega via ZSH_THEME="powerlevel10k/powerlevel10k" (custom/themes). Sem source extra.
+# darwin: OMZ carrega o tema via ZSH_THEME; a CONFIG (~/.p10k.zsh) é sourced no
+# fim do arquivo — sem isso o wizard de configuração dispara a cada shell.
 {{ if eq .chezmoi.os "linux" -}}
 # Linux: tema vem do pacote zsh-theme-powerlevel10k (fora do OMZ).
 [ -f /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme ] &&
@@ -421,3 +439,6 @@ if [[ "$OSTYPE" == darwin* ]]; then
   }
   _start_ssh_keychain_once
 fi
+
+# ── Powerlevel10k config (mantém no fim; carrega ~/.p10k.zsh e evita o wizard) ──
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
