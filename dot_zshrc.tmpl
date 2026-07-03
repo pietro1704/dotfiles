@@ -191,53 +191,54 @@ alias restartAudio='systemctl --user restart pipewire pipewire-pulse wireplumber
 alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2>/dev/null | head -1); QT_QPA_PLATFORM=xcb designer'
 {{ else if eq .chezmoi.os "darwin" -}}
 updateAll() {
+  # Non-interactive: aprova tudo, nunca pergunta (brew casks, hints, auto-update)
+  export HOMEBREW_NO_INTERACTIVE=1
+  export HOMEBREW_NO_AUTO_UPDATE=1
+  export HOMEBREW_NO_ENV_HINTS=1
+  export HOMEBREW_NO_INSTALL_CLEANUP=1
+  export NONINTERACTIVE=1
+
   brew update || return 1
 
-  local outdated_formulae="$(brew outdated --formula --quiet)"
-  if print -r -- "$outdated_formulae" | grep -qx 'xcodes'; then
+  local outdated_formulae outdated_list formulae_to_upgrade
+  outdated_formulae="$(brew outdated --formula --quiet)"
+  outdated_list=(${(f)outdated_formulae})
+
+  if (( ${outdated_list[(I)xcodes]} )); then
     echo '· Pulando xcodes no brew upgrade: 2.0.2 exige Xcode >= 16.4 e este Mac está no Xcode 26.3'
-    local formulae_without_xcodes
-    formulae_without_xcodes=(${(f)$(print -r -- "$outdated_formulae" | grep -vx 'xcodes')})
-    (( ${#formulae_without_xcodes[@]} )) && brew upgrade "${formulae_without_xcodes[@]}" || true
-  else
-    brew upgrade || return 1
+    outdated_list=(${outdated_list:#xcodes})
+  fi
+
+  if (( ${#outdated_list[@]} )); then
+    formulae_to_upgrade=(${(q)outdated_list})
+    brew upgrade ${=formulae_to_upgrade} || return 1
   fi
 
   HOMEBREW_NO_INSTALL_UPGRADE=1 brew upgrade --cask --greedy || return 1
   brew cleanup || return 1
-  omz update || return 1
+  omz update --unattended || return 1
 
-  local hermes_dir="$HOME/.hermes/hermes-agent"
-  local hermes_py="$hermes_dir/venv/bin/python"
+  if command -v claude >/dev/null 2>&1; then
+    echo '→ Atualizando Claude Code...'
+    claude update || return 1
+  fi
 
-  if [[ -d "$hermes_dir/.git" && -x "$hermes_py" ]]; then
-    echo "→ Atualizando Hermes sem reiniciar sessões abertas..."
+  # Hermes update/check removido do updateAll: no Mac ele pode recriar o venv/repo
+  # e quebrar o restante da manutenção. Atualize manualmente com: hermes update
 
-    if git -C "$hermes_dir" diff --quiet && git -C "$hermes_dir" diff --cached --quiet; then
-      git -C "$hermes_dir" fetch origin main || return 1
-      local before upstream after
-      before=$(git -C "$hermes_dir" rev-parse --short HEAD 2>/dev/null || echo unknown)
-      upstream=$(git -C "$hermes_dir" rev-parse --short origin/main 2>/dev/null || echo unknown)
-
-      if [[ "$before" != "$upstream" ]]; then
-        git -C "$hermes_dir" pull --ff-only origin main || return 1
-      fi
-
-      if command -v uv >/dev/null 2>&1; then
-        (cd "$hermes_dir" && uv pip install --python "$hermes_py" -e '.[all,dev]') || {
-          "$hermes_py" -m ensurepip --upgrade && "$hermes_py" -m pip install -e "$hermes_dir[all,dev]";
-        } || return 1
-      else
-        "$hermes_py" -m ensurepip --upgrade && "$hermes_py" -m pip install -e "$hermes_dir[all,dev]" || return 1
-      fi
-
-      after=$(git -C "$hermes_dir" rev-parse --short HEAD 2>/dev/null || echo "$upstream")
-      echo "✓ Hermes: $before -> $after"
-      "$hermes_dir/venv/bin/hermes" --version | head -n 1
-      echo "· Sessões já abertas continuam até você reiniciar cada processo"
-    else
-      echo "· Hermes com mudanças locais; pulando git pull para evitar conflito"
+  if command -v tmux >/dev/null 2>&1 && [[ -x "$HOME/.tmux/plugins/tpm/bin/install_plugins" ]]; then
+    echo '→ Atualizando plugins do tmux...'
+    tmux start-server
+    "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null || return 1
+    if [[ -d "$HOME/.tmux/plugins/tpm/.git" ]]; then
+      git -C "$HOME/.tmux/plugins/tpm" pull --ff-only || return 1
     fi
+    local plugin_dir
+    for plugin_dir in "$HOME"/.tmux/plugins/*; do
+      [[ -d "$plugin_dir/.git" ]] || continue
+      git -C "$plugin_dir" pull --ff-only || return 1
+    done
+    tmux run-shell "$HOME/.tmux/plugins/tpm/scripts/clean_plugins.sh" >/dev/null 2>&1 || true
   fi
 }
 alias vim=nvim
