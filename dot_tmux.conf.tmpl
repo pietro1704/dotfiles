@@ -163,3 +163,6 @@ run-shell -b ~/.tmux/scripts/status-lines.sh
 
 # Initialize TPM (keep at bottom)
 run '~/.tmux/plugins/tpm/tpm'
+set -g @continuum-save-interval '15'
+set -g @resurrect-processes 'false'
+set -g @resurrect-capture-pane-contents 'off'
