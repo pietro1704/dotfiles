@@ -1,10 +1,35 @@
 # Fix p10k/gitstatus showing stale git status when switching between worktrees.
-# All worktrees share the same .git dir, so gitstatusd gets confused.
-# This restarts the daemon whenever we cd into a worktree (detected by .git being a file).
+# Restart daemon whenever the git working-tree context changes (worktree ↔ main,
+# or between linked worktrees). Pure-shell walk-up: no git fork on every cd.
 
-gitstatus_refresh_on_chpwd() {
-  [[ -f .git && -r .git ]] || return 0
-  gitstatus_stop POWERLEVEL9K 2>/dev/null
-  gitstatus_start -s -1 -u -1 -c -1 -d -1 POWERLEVEL9K 2>/dev/null
+_p10k_git_ctx=""
+
+_gitstatus_refresh_on_chpwd() {
+  local ctx="" dir="$PWD"
+  while [[ "$dir" != "/" && "$dir" != "." ]]; do
+    if [[ -f "$dir/.git" ]]; then
+      ctx="$(< "$dir/.git")"   # "gitdir: ../../.git/worktrees/foo" — unique per worktree
+      break
+    elif [[ -d "$dir/.git" ]]; then
+      ctx="main:$dir/.git"
+      break
+    fi
+    dir="${dir:h}"
+  done
+
+  if [[ "$ctx" != "$_p10k_git_ctx" ]]; then
+    _p10k_git_ctx="$ctx"
+    gitstatus_stop POWERLEVEL9K 2>/dev/null
+    gitstatus_start -s -1 -u -1 -c -1 -d -1 POWERLEVEL9K 2>/dev/null
+  fi
 }
-chpwd_functions+=(gitstatus_refresh_on_chpwd)
+
+# chpwd: fires on directory change
+chpwd_functions=("${(@)chpwd_functions:#gitstatus_refresh_on_chpwd}")
+chpwd_functions=("${(@)chpwd_functions:#_gitstatus_refresh_on_chpwd}")
+chpwd_functions+=(_gitstatus_refresh_on_chpwd)
+
+# precmd: fires before every prompt — catches shell init and post-exec redraws
+# Only restarts daemon when context actually changes, so overhead is minimal.
+precmd_functions=("${(@)precmd_functions:#_gitstatus_refresh_on_chpwd}")
+precmd_functions=(_gitstatus_refresh_on_chpwd $precmd_functions)
