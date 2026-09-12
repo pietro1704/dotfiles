@@ -65,9 +65,13 @@ program = "/opt/homebrew/bin/tmux"
 program = "/usr/local/bin/tmux"
 {{   end -}}
 {{ else -}}
-program = "/usr/bin/tmux"
+program = "/home/pips/.local/bin/herdr"
 {{ end -}}
+{{ if eq .chezmoi.os "darwin" -}}
 args    = ["new-session", "-A", "-s", "main"]
+{{ else -}}
+args    = ["--session", "main"]
+{{ end -}}
 
 [[keyboard.bindings]]
 chars = "\u001B\u007F"
