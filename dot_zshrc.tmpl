@@ -1,8 +1,3 @@
-# ── Powerlevel10k instant prompt (deve ficar no topo) ────────────────────────
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
 # ── PATH (typeset -U remove duplicatas automaticamente) ──────────────────────
 typeset -U path
 {{ if eq .chezmoi.os "darwin" -}}
@@ -101,7 +96,7 @@ export ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
 {{ if eq .profile "work" -}}
 export GIT_SSH_COMMAND='gironde ssh'
 {{ end -}}
-ZSH_THEME="powerlevel10k/powerlevel10k"
+ZSH_THEME=""
 DISABLE_AUTO_UPDATE="true"
 DISABLE_UPDATE_PROMPT="true"
 DISABLE_UNTRACKED_FILES_DIRTY="true"   # git status rápido em repos grandes (Pinterest)
@@ -120,7 +115,6 @@ FPATH="/usr/share/zsh/site-functions:${FPATH}"
 
 plugins=(
   git
-  z
   history-substring-search
 {{ if eq .chezmoi.os "darwin" -}}
   sudo
@@ -145,6 +139,11 @@ else
 fi
 
 source "$ZSH/oh-my-zsh.sh"
+
+# Fast, frecency-based directory jumping. Provides `z` and `zi`.
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+fi
 
 # ── Completions ───────────────────────────────────────────────────────────────
 zstyle ':completion:*' menu select
@@ -242,21 +241,6 @@ updateAll() {
   # Hermes update/check removido do updateAll: no Mac ele pode recriar o venv/repo
   # e quebrar o restante da manutenção. Atualize manualmente com: hermes update
 
-  if command -v tmux >/dev/null 2>&1 && [[ -x "$HOME/.tmux/plugins/tpm/bin/install_plugins" ]]; then
-    echo '→ Atualizando plugins do tmux...'
-    tmux start-server
-    "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null || echo '· tmux plugins: install falhou (ignorado)'
-    if [[ -d "$HOME/.tmux/plugins/tpm/.git" ]]; then
-      git -C "$HOME/.tmux/plugins/tpm" pull --ff-only || true
-    fi
-    local plugin_dir
-    for plugin_dir in "$HOME"/.tmux/plugins/*; do
-      [[ -d "$plugin_dir/.git" ]] || continue
-      git -C "$plugin_dir" pull --ff-only || true
-    done
-    tmux run-shell "$HOME/.tmux/plugins/tpm/scripts/clean_plugins.sh" >/dev/null 2>&1 || true
-  fi
-
   echo '✓ updateAll concluído'
 }
 alias vim=nvim
@@ -347,6 +331,11 @@ if command -v bat &>/dev/null; then
   export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :200 {}'"
 fi
 
+# Load per-directory environment variables after the prompt is available.
+if command -v direnv >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
+
 # ── Mise (version manager) — lazy ─────────────────────────────────────────────
 export ASDF_DATA_DIR="$HOME/.asdf"
 if [ -d "$HOME/.local/share/mise/shims" ]; then
@@ -424,14 +413,7 @@ export WATCHMAN_MAX_DEPTH=10
 {{- end }}
 {{ end -}}
 
-# ── Powerlevel10k theme ───────────────────────────────────────────────────────
-# darwin: OMZ carrega o tema via ZSH_THEME; a CONFIG (~/.p10k.zsh) é sourced no
-# fim do arquivo — sem isso o wizard de configuração dispara a cada shell.
 {{ if eq .chezmoi.os "linux" -}}
-# Linux: tema vem do pacote zsh-theme-powerlevel10k (fora do OMZ).
-[ -f /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme ] &&
-  source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
-
 # ── Linux: SSH agent persistente (keychain) ──────────────────────────────────
 # Requer: pacman -S keychain. Pede passphrase 1x por boot e reusa em todo shell.
 if command -v keychain >/dev/null 2>&1; then
@@ -453,13 +435,12 @@ if [[ "$OSTYPE" == darwin* ]]; then
   _start_ssh_keychain_once
 fi
 
-# ── Powerlevel10k config (mantém no fim; carrega ~/.p10k.zsh e evita o wizard) ──
-[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+# ── Starship prompt ───────────────────────────────────────────────────────────
+# A configuração é gerida pelo chezmoi em ~/.config/starship.toml.
+if command -v starship >/dev/null 2>&1; then
+  eval "$(starship init zsh)"
+fi
 
-# ── Prompt note ──────────────────────────────────────────────────────────────
-# Starship was tried (commits cc42e55…8257bcb) but its `git_status` module
-# spends ~480ms/prompt in the Pinterest iOS repo. Reverted to p10k which uses
-# async gitstatusd (~0ms perceived). Config in ~/.p10k.zsh.
-# Window title (was set by starship init, now manual).
+# ── Título da janela ──────────────────────────────────────────────────────────
 function set_win_title() { print -Pn "\e]0;%~\a" }
 precmd_functions+=(set_win_title)

@@ -1,252 +1,285 @@
-"$schema" = "https://starship.rs/config-schema.json"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Powerlevel10k rainbow → Starship 1:1 migration (round-corner variant)
-#
-# Source: ~/.p10k.zsh (nerdfont-v3 + powerline, rainbow, 1 line, compact).
-# Variant: rounded caps via  (left half-circle) and  (right
-# half-circle) instead of sharp triangles.
-#
-# Layout:
-#   LEFT  : os_icon → dir → git
-#   RIGHT : status / cmd_duration / jobs / python / nodejs / ruby /
-#           kube / aws / azure / gcloud / context / time
-#
-# Color map (ANSI 256 → hex):
-#   0=#000000  1=#cc0000  2=#00cc00  3=#cccc00  4=#0066cc  5=#cc00cc
-#   6=#00cccc  7=#cccccc  8=#666666
-#   232=#080808  250=#bcbcbc  254=#e4e4e4  255=#eeeeee
-# ─────────────────────────────────────────────────────────────────────────────
+"$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
+[](red)\
 $os\
-[](fg:#cccccc bg:#0066cc)\
+$username\
+[](bg:peach fg:red)\
 $directory\
-[](fg:#0066cc bg:#00cc00)\
+[](bg:yellow fg:peach)\
 $git_branch\
 $git_status\
-$git_state\
-[](fg:#00cc00)\
-$fill\
-$cmd_duration\
-$status\
-$jobs\
-$kubernetes\
-$aws\
-$azure\
-$gcloud\
-$username\
-$hostname\
+[](fg:yellow bg:green)\
+$c\
+$rust\
+$golang\
+$nodejs\
+$bun\
+$php\
+$java\
+$kotlin\
+$haskell\
+$python\
+[](fg:green bg:sapphire)\
+$conda\
+[](fg:sapphire bg:lavender)\
 $time\
-"""
+[ ](fg:lavender)\
+$cmd_duration\
+$line_break\
+$character"""
 
-right_format = ""
-add_newline = false
-command_timeout = 5000
-scan_timeout = 30
-continuation_prompt = "[❯❯ ](fg:#666666)"
+palette = 'catppuccin_mocha'
 
-# ── Filler ────────────────────────────────────────────────────────────────────
-[fill]
-symbol = " "
-
-# ── os_icon: bg=7 fg=232 ──────────────────────────────────────────────────────
 [os]
 disabled = false
-style = "fg:#080808 bg:#cccccc"
-format = "[ $symbol ]($style)"
+style = "bg:red fg:crust"
 
 [os.symbols]
-Macos      = ""
-Linux      = ""
-Arch       = ""
-Ubuntu     = ""
-Debian     = ""
-Fedora     = ""
-Alpine     = ""
-Redhat     = ""
-Windows    = ""
-Unknown    = ""
+Windows = ""
+Ubuntu = "󰕈"
+SUSE = ""
+Raspbian = "󰐿"
+Mint = "󰣭"
+Macos = "󰀵"
+Manjaro = ""
+Linux = "󰌽"
+Gentoo = "󰣨"
+Fedora = "󰣛"
+Alpine = ""
+Amazon = ""
+Android = ""
+AOSC = ""
+Arch = "󰣇"
+Artix = "󰣇"
+CentOS = ""
+Debian = "󰣚"
+Redhat = "󱄛"
+RedHatEnterprise = "󱄛"
 
-# ── dir: bg=4 fg=254, anchor fg=255 ───────────────────────────────────────────
+[username]
+show_always = true
+style_user = "bg:red fg:crust"
+style_root = "bg:red fg:crust"
+format = '[ $user]($style)'
+
 [directory]
-style = "fg:#e4e4e4 bg:#0066cc"
+style = "bg:peach fg:crust"
 format = "[ $path ]($style)"
 truncation_length = 3
-truncation_symbol = ""
-truncate_to_repo = false
-read_only = "  "
-read_only_style = "fg:#cccc00 bg:#0066cc"
-home_symbol = " ~"
+truncation_symbol = "…/"
 
 [directory.substitutions]
-"Documents"  = "  "
-"Downloads"  = "  "
-"Developer"  = "  "
-"Music"      = "  "
-"Pictures"   = "  "
-"Movies"     = "  "
-"Desktop"    = "  "
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = "󰝚 "
+"Pictures" = " "
+"Developer" = "󰲋 "
 
-# ── vcs: clean=bg2 ────────────────────────────────────────────────────────────
 [git_branch]
-symbol = ""
-style = "fg:#000000 bg:#00cc00"
-format = "[on $symbol $branch]($style)"
-truncation_length = 32
-truncation_symbol = "…"
+symbol = ""
+style = "bg:yellow"
+format = '[[ $symbol $branch ](fg:crust bg:yellow)]($style)'
 
 [git_status]
-style = "fg:#000000 bg:#00cc00"
-format = '[$all_status$ahead_behind]($style)'
-conflicted = " ~$count"
-ahead = " ⇡$count"
-behind = " ⇣$count"
-diverged = " ⇣$behind_count⇡$ahead_count"
-up_to_date = ""
-untracked = " ?"
-stashed = " *$count"
-modified = " !$count"
-staged = " +$count"
-renamed = " »$count"
-deleted = " ✘$count"
-
-[git_state]
-style = "fg:#cc0000 bg:#00cc00"
-format = '[\($state( $progress_current/$progress_total)\)]($style) '
-rebase = "REBASE"
-merge = "MERGE"
-revert = "REVERT"
-cherry_pick = "CHERRY-PICK"
-bisect = "BISECT"
-am = "AM"
-am_or_rebase = "AM/REBASE"
-
-# ── command_execution_time: leftmost on right side, bg=3 fg=0 ────────────────
-[cmd_duration]
-disabled = false
-min_time = 10_000
-show_milliseconds = false
-style = "fg:#000000 bg:#cccc00"
-format = "[ took $duration ]($style)[](fg:#cccc00 bg:#000000)"
-
-# ── status: ok=green check on bg0; error=yellow ✘ on bg1 ─────────────────────
-[status]
-disabled = false
-style = "fg:#cccc00 bg:#cc0000"
-symbol = "✘"
-success_symbol = "[  ](fg:#00cc00 bg:#000000)"
-not_executable_symbol = "[ ✘ ](fg:#cccc00 bg:#cc0000)"
-not_found_symbol = "[ ✘ ](fg:#cccc00 bg:#cc0000)"
-sigint_symbol = "[ ✘ ](fg:#cccc00 bg:#cc0000)"
-signal_symbol = "[ ✘ ](fg:#cccc00 bg:#cc0000)"
-format = '[ $symbol $common_meaning$signal_name$maybe_int ]($style)'
-recognize_signal_code = true
-map_symbol = true
-pipestatus = true
-
-# ── background_jobs: bg=0 fg=6 ───────────────────────────────────────────────
-[jobs]
-disabled = false
-style = "fg:#00cccc bg:#000000"
-symbol = ""
-symbol_threshold = 1
-number_threshold = 2
-format = "[ $symbol $number ]($style)"
-
-# ── language version segments: disabled by default (use `node -v` etc.) ──────
-# Re-enable per-segment if you actively want a specific runtime version
-# in every prompt; lazy-loaded mise/nvm/rbenv/pyenv made these mostly noise.
-[python]
-disabled = true
+style = "bg:yellow"
+format = '[[($all_status$ahead_behind )](fg:crust bg:yellow)]($style)'
 
 [nodejs]
-disabled = true
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
-[ruby]
-disabled = true
+[bun]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
-# ── kubecontext: bg=5 fg=7 ───────────────────────────────────────────────────
-[kubernetes]
-disabled = false
-style = "fg:#cccccc bg:#cc00cc"
-symbol = "☸"
-format = '[ $symbol $context( \($namespace\)) ]($style)'
+[c]
+symbol = " "
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
-# ── aws: bg=1 fg=7 ───────────────────────────────────────────────────────────
-[aws]
-disabled = false
-style = "fg:#cccccc bg:#cc0000"
-symbol = ""
-format = '[ $symbol $profile(@$region) ]($style)'
+[rust]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
-# ── azure: bg=4 fg=7 ─────────────────────────────────────────────────────────
-[azure]
-disabled = false
-style = "fg:#cccccc bg:#0066cc"
-symbol = "ﴃ"
-format = "[ $symbol $subscription ]($style)"
+[golang]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
-# ── gcloud: bg=4 fg=7 ────────────────────────────────────────────────────────
-[gcloud]
-disabled = false
-style = "fg:#cccccc bg:#0066cc"
-symbol = ""
-format = '[ $symbol $account@$project ]($style)'
+[php]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
-# ── username/hostname (only root or SSH): bg=0 fg=3 ──────────────────────────
-[username]
-disabled = false
-show_always = false
-style_user = "fg:#cccc00 bg:#000000"
-style_root = "fg:#cc0000 bg:#000000"
-format = "[ with $user ]($style)"
+[java]
+symbol = " "
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
-[hostname]
-disabled = false
-ssh_only = true
-ssh_symbol = "@"
-style = "fg:#cccc00 bg:#000000"
-format = "[$ssh_symbol$hostname ]($style)"
+[kotlin]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
-# ── time: bg=7 fg=0 (rightmost segment) ──────────────────────────────────────
+[haskell]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+
+[python]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version)(\(#$virtualenv\)) ](fg:crust bg:green)]($style)'
+
+[docker_context]
+symbol = ""
+style = "bg:sapphire"
+format = '[[ $symbol( $context) ](fg:crust bg:sapphire)]($style)'
+
+[conda]
+symbol = "  "
+style = "fg:crust bg:sapphire"
+format = '[$symbol$environment ]($style)'
+ignore_base = false
+
 [time]
 disabled = false
-style = "fg:#000000 bg:#cccccc"
-time_format = "%H:%M:%S"
-format = "[](fg:#cccccc bg:#000000)[ at $time ]($style)[](fg:#cccccc)"
-utc_time_offset = "local"
+time_format = "%R"
+style = "bg:lavender"
+format = '[[  $time ](fg:crust bg:lavender)]($style)'
 
-# ── Disable: prompt char (p10k disables it) ──────────────────────────────────
+[line_break]
+disabled = true
+
 [character]
-disabled = true
-success_symbol = ""
-error_symbol = ""
+disabled = false
+success_symbol = '[❯](bold fg:green)'
+error_symbol = '[❯](bold fg:red)'
+vimcmd_symbol = '[❮](bold fg:green)'
+vimcmd_replace_one_symbol = '[❮](bold fg:lavender)'
+vimcmd_replace_symbol = '[❮](bold fg:lavender)'
+vimcmd_visual_symbol = '[❮](bold fg:yellow)'
 
-# ── Disable segments p10k didn't render ──────────────────────────────────────
-[battery]
-disabled = true
+[cmd_duration]
+show_milliseconds = true
+format = " in $duration "
+style = "bg:lavender"
+disabled = false
+show_notifications = true
+min_time_to_notify = 45000
 
-[memory_usage]
-disabled = true
+[palettes.catppuccin_mocha]
+rosewater = "#f5e0dc"
+flamingo = "#f2cdcd"
+pink = "#f5c2e7"
+mauve = "#cba6f7"
+red = "#f38ba8"
+maroon = "#eba0ac"
+peach = "#fab387"
+yellow = "#f9e2af"
+green = "#a6e3a1"
+teal = "#94e2d5"
+sky = "#89dceb"
+sapphire = "#74c7ec"
+blue = "#89b4fa"
+lavender = "#b4befe"
+text = "#cdd6f4"
+subtext1 = "#bac2de"
+subtext0 = "#a6adc8"
+overlay2 = "#9399b2"
+overlay1 = "#7f849c"
+overlay0 = "#6c7086"
+surface2 = "#585b70"
+surface1 = "#45475a"
+surface0 = "#313244"
+base = "#1e1e2e"
+mantle = "#181825"
+crust = "#11111b"
 
-[package]
-disabled = true
+[palettes.catppuccin_frappe]
+rosewater = "#f2d5cf"
+flamingo = "#eebebe"
+pink = "#f4b8e4"
+mauve = "#ca9ee6"
+red = "#e78284"
+maroon = "#ea999c"
+peach = "#ef9f76"
+yellow = "#e5c890"
+green = "#a6d189"
+teal = "#81c8be"
+sky = "#99d1db"
+sapphire = "#85c1dc"
+blue = "#8caaee"
+lavender = "#babbf1"
+text = "#c6d0f5"
+subtext1 = "#b5bfe2"
+subtext0 = "#a5adce"
+overlay2 = "#949cbb"
+overlay1 = "#838ba7"
+overlay0 = "#737994"
+surface2 = "#626880"
+surface1 = "#51576d"
+surface0 = "#414559"
+base = "#303446"
+mantle = "#292c3c"
+crust = "#232634"
 
-[shell]
-disabled = true
+[palettes.catppuccin_latte]
+rosewater = "#dc8a78"
+flamingo = "#dd7878"
+pink = "#ea76cb"
+mauve = "#8839ef"
+red = "#d20f39"
+maroon = "#e64553"
+peach = "#fe640b"
+yellow = "#df8e1d"
+green = "#40a02b"
+teal = "#179299"
+sky = "#04a5e5"
+sapphire = "#209fb5"
+blue = "#1e66f5"
+lavender = "#7287fd"
+text = "#4c4f69"
+subtext1 = "#5c5f77"
+subtext0 = "#6c6f85"
+overlay2 = "#7c7f93"
+overlay1 = "#8c8fa1"
+overlay0 = "#9ca0b0"
+surface2 = "#acb0be"
+surface1 = "#bcc0cc"
+surface0 = "#ccd0da"
+base = "#eff1f5"
+mantle = "#e6e9ef"
+crust = "#dce0e8"
 
-[shlvl]
-disabled = true
-
-[singularity]
-disabled = true
-
-[terraform]
-disabled = true
-
-[vcsh]
-disabled = true
-
-[hg_branch]
-disabled = true
+[palettes.catppuccin_macchiato]
+rosewater = "#f4dbd6"
+flamingo = "#f0c6c6"
+pink = "#f5bde6"
+mauve = "#c6a0f6"
+red = "#ed8796"
+maroon = "#ee99a0"
+peach = "#f5a97f"
+yellow = "#eed49f"
+green = "#a6da95"
+teal = "#8bd5ca"
+sky = "#91d7e3"
+sapphire = "#7dc4e4"
+blue = "#8aadf4"
+lavender = "#b7bdf8"
+text = "#cad3f5"
+subtext1 = "#b8c0e0"
+subtext0 = "#a5adcb"
+overlay2 = "#939ab7"
+overlay1 = "#8087a2"
+overlay0 = "#6e738d"
+surface2 = "#5b6078"
+surface1 = "#494d64"
+surface0 = "#363a4f"
+base = "#24273a"
+mantle = "#1e2030"
+crust = "#181926"
