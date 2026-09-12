@@ -1,5 +1,9 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
+# Repositórios grandes e diretórios de trabalho do homelab podem exceder o padrão
+# de 30 ms durante a detecção de contexto. Mantém o prompt informativo sem alerta.
+scan_timeout = 500
+
 format = """
 [](red)\
 $os\
