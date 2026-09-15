@@ -415,14 +415,23 @@ export WATCHMAN_MAX_DEPTH=10
 
 {{ if eq .chezmoi.os "linux" -}}
 # ── Linux: SSH agent persistente (keychain) ──────────────────────────────────
-# Requer: pacman -S keychain. Pede passphrase 1x por boot e reusa em todo shell.
-if command -v keychain >/dev/null 2>&1; then
-  eval "$(keychain --eval --quiet --agents ssh id_ed25519 2>/dev/null)"
-elif [ -z "$SSH_AUTH_SOCK" ] && command -v ssh-agent >/dev/null 2>&1; then
-  # Fallback: agente por sessão (pede passphrase 1x por shell)
-  eval "$(ssh-agent -s)" >/dev/null
-  ssh-add ~/.ssh/id_ed25519 2>/dev/null
+# Requer: pacman -S keychain. Reaproveita primeiro o arquivo seguro que o
+# keychain já gerou neste boot. Executar `keychain --eval` em cada shell custa
+# ~0,5 s neste host; validar o socket existente custa ~5 ms.
+_keychain_cache="$HOME/.keychain/${HOST:-$(uname -n)}-sh"
+if [[ -r "$_keychain_cache" && -O "$_keychain_cache" ]]; then
+  source "$_keychain_cache"
 fi
+if ! { [[ -n "${SSH_AUTH_SOCK:-}" ]] && ssh-add -l >/dev/null 2>&1; }; then
+  if command -v keychain >/dev/null 2>&1; then
+    eval "$(keychain --eval --quiet --agents ssh id_ed25519 2>/dev/null)"
+  elif [[ -z "${SSH_AUTH_SOCK:-}" ]] && command -v ssh-agent >/dev/null 2>&1; then
+    # Fallback: agente por sessão (pede passphrase 1x por shell)
+    eval "$(ssh-agent -s)" >/dev/null
+    ssh-add ~/.ssh/id_ed25519 2>/dev/null
+  fi
+fi
+unset _keychain_cache
 {{ end -}}
 
 if [[ "$OSTYPE" == darwin* ]]; then
