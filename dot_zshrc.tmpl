@@ -343,7 +343,9 @@ if [ -d "$HOME/.local/share/mise/shims" ]; then
 fi
 mise() {
   unfunction mise 2>/dev/null
-  eval "$(command mise activate zsh)"
+  # Mantém os shims como mecanismo único; a ativação completa fazia `mise doctor`
+  # reportar falsamente todos os shims como ausentes neste PATH.
+  eval "$(command mise activate zsh --shims)"
   mise "$@"
 }
 

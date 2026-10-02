@@ -4,6 +4,10 @@
 # de 30 ms durante a detecção de contexto. Mantém o prompt informativo sem alerta.
 scan_timeout = 500
 
+# O módulo Python consulta o shim do mise; em inicialização a frio ele pode exceder
+# o padrão de 500 ms. Mantém a versão/venv no prompt sem alertas espúrios.
+command_timeout = 3000
+
 format = """
 [](red)\
 $os\
@@ -135,6 +139,10 @@ style = "bg:green"
 format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 
 [python]
+# Exibe Python apenas em projetos declarados; scripts soltos no $HOME não acionam o módulo.
+detect_extensions = []
+detect_folders = []
+detect_files = ["pyproject.toml", "requirements.txt", "Pipfile", "setup.py", "setup.cfg", "tox.ini", ".python-version", "mise.toml", ".mise.toml"]
 symbol = ""
 style = "bg:green"
 format = '[[ $symbol( $version)(\(#$virtualenv\)) ](fg:crust bg:green)]($style)'
