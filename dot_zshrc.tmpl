@@ -202,13 +202,16 @@ alias orphan='pacman -Qtdq'
 alias restartAudio='systemctl --user restart pipewire pipewire-pulse wireplumber'
 alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2>/dev/null | head -1); QT_QPA_PLATFORM=xcb designer'
 {{ else if eq .chezmoi.os "darwin" -}}
-# Attach nativo do Herdr ao servidor remoto; não usa tmux nem compartilha panes locais.
+# Attach ao Herdr remoto usando SSH como transporte, sem tmux e sem nested Herdr.
 arch() {
-  if [[ "${HERDR_ENV:-}" == 1 ]]; then
-    print -u2 '· Este shell já está dentro do Herdr; abra o perfil arch-herdr pelo cliente principal do Herdr.'
-    return 2
-  fi
-  command herdr --remote arch --session main
+  local rc
+  while true; do
+    command ssh -tt arch 'unset HERDR_ENV; exec ~/.local/bin/herdr session attach main'
+    rc=$?
+    (( rc == 0 )) && return 0
+    print -u2 "· SSH/Herdr Arch caiu (rc=$rc); reconectando em 2s..."
+    sleep 2
+  done
 }
 
 updateAll() {
