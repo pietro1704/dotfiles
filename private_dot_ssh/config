@@ -1,0 +1,35 @@
+# SSH interativo resiliente Mac → Arch
+Host arch
+    HostName 192.168.0.120
+    User pips
+    IdentityFile ~/.ssh/id_ed25519_arch_opl
+    IdentitiesOnly yes
+    RequestTTY force
+    RemoteCommand tmux new-session -A -s herdr
+    ControlMaster no
+    ControlPath none
+    ServerAliveInterval 30
+    ServerAliveCountMax 120
+    TCPKeepAlive yes
+    ConnectTimeout 10
+
+# Perfil bruto para comandos, rsync e verificações; nunca abre tmux.
+Host arch-raw
+    HostName 192.168.0.120
+    User pips
+    IdentityFile ~/.ssh/id_ed25519_arch_opl
+    IdentitiesOnly yes
+    RequestTTY no
+    RemoteCommand none
+    ControlMaster no
+    ControlPath none
+    ServerAliveInterval 30
+    ServerAliveCountMax 3
+    TCPKeepAlive yes
+    ConnectTimeout 10
+
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile /Users/pips/.ssh/id_ed25519_github_epubtomp3
+    IdentitiesOnly yes

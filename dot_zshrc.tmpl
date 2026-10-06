@@ -1,5 +1,13 @@
 # ── PATH (typeset -U remove duplicatas automaticamente) ──────────────────────
 typeset -U path
+
+# Recupera o tty quando um TUI/SSH termina sem restaurar os modos do terminal.
+# Evita que eventos de mouse SGR (ESC [ < ... M) apareçam como texto no prompt.
+if [[ -o interactive ]]; then
+  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l\e[?1015l\e[?2004l' 2>/dev/null
+  stty sane 2>/dev/null
+fi
+
 {{ if eq .chezmoi.os "darwin" -}}
 # Hardcoded — evita subshell `brew --prefix` (~50ms). Ajustar se mudar de máquina.
 if [ -x "/opt/homebrew/bin/brew" ]; then
@@ -18,6 +26,8 @@ export PYENV_ROOT="$HOME/.pyenv"
 path=(
   $HOME/.local/bin
   $HOME/bin
+  /opt/local/bin
+  /opt/local/sbin
   ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/bin}
   ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/sbin}
   ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/opt/curl/bin}
@@ -192,55 +202,91 @@ alias orphan='pacman -Qtdq'
 alias restartAudio='systemctl --user restart pipewire pipewire-pulse wireplumber'
 alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2>/dev/null | head -1); QT_QPA_PLATFORM=xcb designer'
 {{ else if eq .chezmoi.os "darwin" -}}
+# SSH interativo resiliente: mantém a sessão no tmux do Arch e reconecta
+# somente quando a conexão cai; saída normal do tmux encerra o comando.
+arch() {
+  local rc
+  while true; do
+    command ssh arch
+    rc=$?
+    (( rc == 0 )) && return 0
+    print -u2 "· SSH Arch caiu (rc=$rc); reconectando em 2s..."
+    sleep 2
+  done
+}
+
 updateAll() {
-  # Non-interactive: aprova tudo, nunca pergunta (brew casks, hints, auto-update)
-  export HOMEBREW_NO_INTERACTIVE=1
   export HOMEBREW_NO_AUTO_UPDATE=1
   export HOMEBREW_NO_ENV_HINTS=1
   export HOMEBREW_NO_INSTALL_CLEANUP=1
+  export HOMEBREW_NO_INSTALL_UPGRADE=1
   export NONINTERACTIVE=1
 
-  brew update || return 1
+  local failed=0 formula
+  local skip_formulae=(
+    edencommon fb303 fbthrift fizz folly mvfst wangle
+    llvm llvm@22 watchman xcodes mise
+  )
 
-  local outdated_formulae outdated_list formulae_to_upgrade
-  outdated_formulae="$(brew outdated --formula --quiet)"
-  outdated_list=(${(f)outdated_formulae})
-
-  if (( ${outdated_list[(I)xcodes]} )); then
-    echo '· Pulando xcodes no brew upgrade: 2.0.2 exige Xcode >= 16.4 e este Mac está no Xcode 26.3'
-    outdated_list=(${outdated_list:#xcodes})
+  echo '→ Atualizando MacPorts...'
+  if command -v port >/dev/null 2>&1; then
+    # -N: modo não interativo; sudo ainda pode pedir autenticação do macOS.
+    sudo port -N selfupdate || failed=1
+    sudo port -N upgrade outdated || failed=1
+  else
+    echo '· MacPorts não encontrado no PATH'
+    failed=1
   fi
 
-  if (( ${#outdated_list[@]} )); then
-    formulae_to_upgrade=(${(q)outdated_list})
-    brew upgrade ${=formulae_to_upgrade} || return 1
-  fi
+  echo '→ Atualizando Homebrew...'
+  brew update || failed=1
 
-  HOMEBREW_NO_INSTALL_UPGRADE=1 brew upgrade --cask --greedy || return 1
-  brew cleanup || return 1
+  while IFS= read -r formula; do
+    [[ -z "$formula" ]] && continue
+    if (( ${skip_formulae[(I)$formula]} )); then
+      echo "· Pulando fórmula pesada/legada: $formula"
+      continue
+    fi
+    echo "→ Atualizando fórmula: $formula"
+    brew upgrade --formula --yes "$formula" || failed=1
+  done < <(brew outdated --formula --quiet)
 
-  # A partir daqui, falha de uma etapa não aborta as demais: queremos
-  # atualizar TUDO mesmo que um componente individual falhe.
+  echo '→ Atualizando casks instalados...'
+  brew upgrade --cask --yes || failed=1
+  brew cleanup --prune=30 || failed=1
 
-  # oh-my-zsh (o flag --unattended foi removido; upgrade.sh sem -i é não-interativo)
   if [[ -x "$ZSH/tools/upgrade.sh" ]]; then
     echo '→ Atualizando oh-my-zsh...'
-    LANG= ZSH="$ZSH" zsh -f "$ZSH/tools/upgrade.sh" || echo '· oh-my-zsh: update falhou (ignorado)'
+    LANG= ZSH="$ZSH" zsh -f "$ZSH/tools/upgrade.sh" || failed=1
   fi
-
-  # mise: o binário vem do brew (self-update não funciona — "installed via a
-  # package manager"), então `brew upgrade` acima já o mantém atualizado.
-  # Runtimes (node/ruby/flutter): rodar `mise upgrade` manualmente quando quiser
-  # — evita recompilar do zero a cada updateAll.
 
   if command -v claude >/dev/null 2>&1; then
     echo '→ Atualizando Claude Code...'
-    claude update || echo '· Claude Code: update falhou (ignorado)'
+    claude update || failed=1
   fi
 
   # Hermes update/check removido do updateAll: no Mac ele pode recriar o venv/repo
   # e quebrar o restante da manutenção. Atualize manualmente com: hermes update
 
+  if command -v tmux >/dev/null 2>&1 && [[ -x "$HOME/.tmux/plugins/tpm/bin/install_plugins" ]]; then
+    echo '→ Atualizando plugins do tmux...'
+    tmux start-server
+    "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null || echo '· tmux plugins: install falhou (ignorado)'
+    if [[ -d "$HOME/.tmux/plugins/tpm/.git" ]]; then
+      git -C "$HOME/.tmux/plugins/tpm" pull --ff-only || true
+    fi
+    local plugin_dir
+    for plugin_dir in "$HOME"/.tmux/plugins/*; do
+      [[ -d "$plugin_dir/.git" ]] || continue
+      git -C "$plugin_dir" pull --ff-only || true
+    done
+    tmux run-shell "$HOME/.tmux/plugins/tpm/scripts/clean_plugins.sh" >/dev/null 2>&1 || true
+  fi
+
+  if (( failed )); then
+    echo '⚠ updateAll terminou com falhas'
+    return 1
+  fi
   echo '✓ updateAll concluído'
 }
 alias vim=nvim
