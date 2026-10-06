@@ -5,7 +5,7 @@ Host arch
     IdentityFile ~/.ssh/id_ed25519_arch_opl
     IdentitiesOnly yes
     RequestTTY force
-    RemoteCommand tmux new-session -A -s herdr
+    RemoteCommand tmux new-session -A -D -s herdr
     ControlMaster no
     ControlPath none
     ServerAliveInterval 30
