@@ -202,17 +202,9 @@ alias orphan='pacman -Qtdq'
 alias restartAudio='systemctl --user restart pipewire pipewire-pulse wireplumber'
 alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2>/dev/null | head -1); QT_QPA_PLATFORM=xcb designer'
 {{ else if eq .chezmoi.os "darwin" -}}
-# SSH interativo resiliente: mantém a sessão no tmux do Arch e reconecta
-# somente quando a conexão cai; saída normal do tmux encerra o comando.
+# Attach nativo do Herdr ao servidor remoto; não usa tmux nem compartilha panes locais.
 arch() {
-  local rc
-  while true; do
-    command ssh arch
-    rc=$?
-    (( rc == 0 )) && return 0
-    print -u2 "· SSH Arch caiu (rc=$rc); reconectando em 2s..."
-    sleep 2
-  done
+  command herdr --remote arch --session herdr
 }
 
 updateAll() {
