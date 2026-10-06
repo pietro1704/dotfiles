@@ -204,7 +204,11 @@ alias designerfix='export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth* 2
 {{ else if eq .chezmoi.os "darwin" -}}
 # Attach nativo do Herdr ao servidor remoto; não usa tmux nem compartilha panes locais.
 arch() {
-  command herdr --remote arch --session herdr
+  if [[ "${HERDR_ENV:-}" == 1 ]]; then
+    print -u2 '· Este shell já está dentro do Herdr; abra o perfil arch-herdr pelo cliente principal do Herdr.'
+    return 2
+  fi
+  command herdr --remote arch --session main
 }
 
 updateAll() {
