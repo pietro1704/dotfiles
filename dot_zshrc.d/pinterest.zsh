@@ -1431,7 +1431,7 @@ unalias mybuild 2>/dev/null
 
 alias gmb="git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short) - %(committerdate:relative) - %(objectname:short) - %(subject)'"
 # alias "make xcode"="make tuist"
-alias updateAll="brew upgrade && brew upgrade --cask --greedy && brew cleanup && omz update"
+# updateAll is defined in ~/.zshrc and uses the shared binary-only updater.
 alias sshLinux="ssh pietro@pietro-linux"
 cleanAllCache() {
     sudo rm -rf \

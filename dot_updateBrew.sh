@@ -1,2 +1,3 @@
 #!/usr/bin/env zsh
-brew upgrade && brew upgrade --greedy --cask && brew cleanup
+source "$HOME/.local/lib/package-updates/binary-updates.zsh" || exit $?
+updateBrewBinaryOnly "$@"

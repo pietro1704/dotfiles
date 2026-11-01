@@ -214,6 +214,8 @@ arch() {
   done
 }
 
+source "$HOME/.local/lib/package-updates/binary-updates.zsh"
+
 updateAll() {
   export HOMEBREW_NO_AUTO_UPDATE=1
   export HOMEBREW_NO_ENV_HINTS=1
@@ -221,38 +223,8 @@ updateAll() {
   export HOMEBREW_NO_INSTALL_UPGRADE=1
   export NONINTERACTIVE=1
 
-  local failed=0 formula
-  local skip_formulae=(
-    edencommon fb303 fbthrift fizz folly mvfst wangle
-    llvm llvm@22 watchman xcodes mise
-  )
-
-  echo '→ Atualizando MacPorts...'
-  if command -v port >/dev/null 2>&1; then
-    # -N: modo não interativo; sudo ainda pode pedir autenticação do macOS.
-    sudo port -N selfupdate || failed=1
-    sudo port -N upgrade outdated || failed=1
-  else
-    echo '· MacPorts não encontrado no PATH'
-    failed=1
-  fi
-
-  echo '→ Atualizando Homebrew...'
-  brew update || failed=1
-
-  while IFS= read -r formula; do
-    [[ -z "$formula" ]] && continue
-    if (( ${skip_formulae[(I)$formula]} )); then
-      echo "· Pulando fórmula pesada/legada: $formula"
-      continue
-    fi
-    echo "→ Atualizando fórmula: $formula"
-    brew upgrade --formula --yes "$formula" || failed=1
-  done < <(brew outdated --formula --quiet)
-
-  echo '→ Atualizando casks instalados...'
-  brew upgrade --cask --yes || failed=1
-  brew cleanup --prune=30 || failed=1
+  local failed=0
+  updatePackagesBinaryOnly || failed=1
 
   if [[ -x "$ZSH/tools/upgrade.sh" ]]; then
     echo '→ Atualizando oh-my-zsh...'
