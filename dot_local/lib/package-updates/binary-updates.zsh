@@ -5,7 +5,7 @@ updateBrewBinaryOnly() {
   local -x HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
   local -x HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_ENV_HINTS=1
   local -x HOMEBREW_NO_INSTALL_UPGRADE=1
-  local skip_formulae=(edencommon fb303 fbthrift fizz folly mvfst wangle llvm llvm@22 watchman xcodes mise)
+  local skip_formulae=(edencommon fb303 fbthrift fizz folly mvfst wangle llvm llvm@22 watchman xcodes mise herdr)
   local -x HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE="${(j:,:)skip_formulae}"
   if [[ ${1:-} == --dry-run && $# == 1 ]]; then
     mode=dry-run

@@ -18,7 +18,7 @@ class BinaryUpdates(unittest.TestCase):
             bindir.mkdir()
             for name in ('brew', 'port', 'sudo'):
                 path = bindir / name
-                path.write_text('#!/bin/zsh\nprint -r -- "${0:t} $* mode=${HOMEBREW_BINARY_UPDATE_MODE:-}" >> "$LOG"\n[[ "$*" == "$FAIL" ]] && exit "$RC"\n[[ -n "$FAIL_MODE" && "${HOMEBREW_BINARY_UPDATE_MODE:-}" == "$FAIL_MODE" ]] && exit "$RC"\nexit 0\n')
+                path.write_text('#!/bin/zsh\nprint -r -- "${0:t} $* mode=${HOMEBREW_BINARY_UPDATE_MODE:-} skip=${HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE:-}" >> "$LOG"\n[[ "$*" == "$FAIL" ]] && exit "$RC"\n[[ -n "$FAIL_MODE" && "${HOMEBREW_BINARY_UPDATE_MODE:-}" == "$FAIL_MODE" ]] && exit "$RC"\nexit 0\n')
                 path.chmod(0o755)
             env = dict(os.environ, HOME=tmp, PATH=str(bindir)+':/usr/bin:/bin',
                        LOG=str(home/'log'), FAIL=fail, FAIL_MODE=fail_mode, RC=str(rc))
@@ -62,6 +62,13 @@ class BinaryUpdates(unittest.TestCase):
             self.assertNotIn('cleanup', log)
             if rc == 130:
                 self.assertNotIn('mode=cask-apply', log)
+
+    def test_manual_herdr_is_excluded_from_brew_updates(self):
+        result, log = self.run_update('updateBrewBinaryOnly --dry-run')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        formula_calls = [line for line in log.splitlines() if ' mode=dry-run ' in line]
+        self.assertEqual(len(formula_calls), 1)
+        self.assertIn('herdr', formula_calls[0].split(' skip=')[1].split(','))
 
     def test_unknown_argument_does_nothing(self):
         result, log = self.run_update('updatePackagesBinaryOnly --oops')
