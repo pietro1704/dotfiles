@@ -1,0 +1,17 @@
+name: Package update regression tests
+on:
+  push:
+  pull_request:
+jobs:
+  binary-updates:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell runtime regressions
+        run: python3 -m unittest discover -s tests
+      - name: Homebrew installer guard regressions
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: brew ruby tests/test_binary_guard.rb
+      - name: Shell syntax
+        run: zsh -n dot_updateBrew.sh dot_local/lib/package-updates/binary-updates.zsh
