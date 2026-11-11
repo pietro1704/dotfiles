@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Prefer the verified user release until the system package catches up.
+tool=ai-jail
+release=3.3.1
+binary="$HOME/.local/lib/ai-tools/releases/$tool-$release/$tool"
+if [[ -x /usr/bin/$tool ]]; then
+    system_version=$(/usr/bin/"$tool" --version | awk 'NR == 1 {print $2}')
+    newest=$(printf '%s\n' "$release" "$system_version" | sort -V | tail -n1)
+    if [[ $newest == "$system_version" ]]; then binary=/usr/bin/$tool; fi
+fi
+if [[ ! -x $binary ]]; then
+    printf '%s: executável ausente: %s\n' "$tool" "$binary" >&2
+    exit 127
+fi
+# The Codex npm launcher is incomplete inside profiles with toolchains off.
+# Expose only the native executables, read-only, for declared Codex launches.
+codex_harness=false
+previous=''
+for arg in "$@"; do
+    [[ $arg == -- ]] && break
+    if [[ $previous == --harness && $arg == codex ]]; then codex_harness=true; fi
+    previous=$arg
+done
+maps=()
+if $codex_harness; then
+    for name in codex codex-code-mode-host codex-exec-server; do
+        path="$HOME/.local/bin/$name"
+        if [[ ! -f $path || -L $path || ! -x $path ]]; then
+            printf 'ai-jail: executável nativo ausente: %s\n' "$path" >&2
+            exit 127
+        fi
+        maps+=(--map "$path")
+    done
+    exec "$binary" "${maps[@]}" "$@"
+fi
+exec "$binary" "$@"

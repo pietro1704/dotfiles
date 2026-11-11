@@ -10,3 +10,13 @@
 
 # Testes do repositório não são dotfiles.
 tests
+
+# Repository-only validation and installation helpers.
+AI_TOOLS.md
+scripts/**
+# Linux launchers and units use verified Linux release assets.
+{{- if ne .chezmoi.os "linux" }}
+.local/bin/ai-memory
+.local/bin/ai-jail
+.config/systemd/user/ai-memory.service.d/20-user-release.conf
+{{- end }}

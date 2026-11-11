@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Prefer the verified user release until the system package catches up.
+tool=ai-memory
+release=3.4.5
+binary="$HOME/.local/lib/ai-tools/releases/$tool-$release/$tool"
+if [[ -x /usr/bin/$tool ]]; then
+    system_version=$(/usr/bin/"$tool" --version | awk 'NR == 1 {print $2}')
+    newest=$(printf '%s\n' "$release" "$system_version" | sort -V | tail -n1)
+    if [[ $newest == "$system_version" ]]; then binary=/usr/bin/$tool; fi
+fi
+if [[ ! -x $binary ]]; then
+    printf '%s: executável ausente: %s\n' "$tool" "$binary" >&2
+    exit 127
+fi
+if [[ ${1:-} == run ]]; then
+    jail=false
+    for arg in "${@:2}"; do
+        case "$arg" in
+            --) break ;;
+            --jail|--jail=*) jail=true ;;
+            --no-jail) jail=false ;;
+        esac
+    done
+    if $jail && [[ $(pwd -P) == "$(cd "$HOME" && pwd -P)" ]]; then
+        workspace="$HOME/workspace/homelab"
+        if [[ ! -d $workspace ]]; then
+            printf 'ai-memory: crie primeiro a pasta de trabalho: %s\n' "$workspace" >&2
+            exit 72
+        fi
+        cd -- "$workspace"
+        printf 'ai-memory: lançamento em ~; projeto isolado em %s (a home não é montada inteira).\n' "$PWD" >&2
+    fi
+    exec "$HOME/.local/bin/agent-guard" "$binary" "$@"
+fi
+exec "$binary" "$@"

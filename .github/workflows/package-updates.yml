@@ -15,3 +15,12 @@ jobs:
         run: brew ruby tests/test_binary_guard.rb
       - name: Shell syntax
         run: zsh -n dot_updateBrew.sh dot_local/lib/package-updates/binary-updates.zsh
+
+  linux-ai-launchers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: AI launcher regressions
+        run: python3 -m unittest discover -s tests -p 'test_ai_launchers.py'
+      - name: Launcher and installer syntax
+        run: bash -n dot_local/bin/executable_ai-memory dot_local/bin/executable_ai-jail scripts/install-ai-tools.sh
