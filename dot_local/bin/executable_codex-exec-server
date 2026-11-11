@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+native_dir=$("$HOME/.local/bin/codex-native-path")
+name=${0##*/}
+if [[ ! -x $native_dir/$name ]]; then
+    printf 'codex: %s is not part of the selected mise distribution\n' "$name" >&2
+    exit 127
+fi
+exec "$native_dir/$name" "$@"

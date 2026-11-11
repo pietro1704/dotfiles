@@ -21,3 +21,16 @@ ulimit -n 65536 2>/dev/null
 # Evita crash de fork em Ruby/scripts que tocam em Obj-C runtime
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 {{ end -}}
+
+{{ if eq .chezmoi.os "linux" -}}
+# Stable entry points in interactive shells, scripts, SSH and clean directories.
+# Drop inherited version-specific mise paths; shims select global/project pins.
+if [[ -d "$HOME/.local/share/mise/shims" ]]; then
+  typeset -U path
+  path=("$HOME/.local/share/mise/shims" "$HOME/.local/bin" ${path:#${HOME}/.local/share/mise/installs/*})
+  if [[ -n ${VIRTUAL_ENV:-} && -d "$VIRTUAL_ENV/bin" ]]; then
+    path=("$VIRTUAL_ENV/bin" $path)
+  fi
+  export PATH
+fi
+{{ end -}}

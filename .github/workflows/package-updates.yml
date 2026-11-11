@@ -21,6 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: AI launcher regressions
-        run: python3 -m unittest discover -s tests -p 'test_ai_launchers.py'
+        run: python3 -m unittest discover -s tests -p 'test_ai_launchers.py' && python3 -m unittest discover -s tests -p 'test_codex_native_path.py'
       - name: Launcher and installer syntax
-        run: bash -n dot_local/bin/executable_ai-memory dot_local/bin/executable_ai-jail scripts/install-ai-tools.sh
+        run: bash -n dot_local/bin/executable_ai-memory dot_local/bin/executable_ai-jail scripts/install-ai-tools.sh dot_local/bin/executable_codex

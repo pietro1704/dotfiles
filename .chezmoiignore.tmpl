@@ -18,5 +18,10 @@ scripts/**
 {{- if ne .chezmoi.os "linux" }}
 .local/bin/ai-memory
 .local/bin/ai-jail
+.local/bin/codex
+.local/bin/codex-native-path
+.local/bin/codex-code-mode-host
+.local/bin/codex-exec-server
+.config/mise/config.toml
 .config/systemd/user/ai-memory.service.d/20-user-release.conf
 {{- end }}

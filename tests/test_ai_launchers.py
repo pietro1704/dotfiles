@@ -28,6 +28,7 @@ print(json.dumps({'cwd': os.getcwd(), 'argv': sys.argv[1:]}))
 sys.exit(int(os.environ.get('PROBE_EXIT', '0')))
 ''')
             self.executable(self.bin / tool, (SOURCE / ('executable_' + tool)).read_text())
+        self.executable(self.bin / "codex-native-path", "#!/bin/bash\nprintf '%s\\n' \"$HOME/.local/bin\"\n")
         self.executable(self.bin / 'agent-guard', '#!/bin/bash\nexec "$@"\n')
         for name in ['codex', 'codex-code-mode-host', 'codex-exec-server']:
             self.executable(self.bin / name, '#!/bin/bash\nexit 0\n')
@@ -71,7 +72,7 @@ sys.exit(int(os.environ.get('PROBE_EXIT', '0')))
         argv = json.loads(r.stdout)['argv']
         expected = []
         for name in ['codex', 'codex-code-mode-host', 'codex-exec-server']:
-            expected += ['--map', str(self.bin / name)]
+            expected += ['--map', f'{self.bin / name}:{self.bin / name}']
         self.assertEqual(argv, expected + ['--harness', 'codex', '--', '/bin/true'])
 
     def test_missing_native_codex_fails_without_starting_jail(self):

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+native_dir=$("$HOME/.local/bin/codex-native-path")
+exec "$native_dir/codex" "$@"
