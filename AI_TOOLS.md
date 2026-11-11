@@ -10,11 +10,12 @@ A matching global/project version uses one installation.
 | Node | 26.13.0 | 26.13.0, same installation |
 | npm | 12.2.2 | 12.2.2, same installation |
 | Python | 3.12.10 | 3.14.10 |
-| Ruby | 3.3.5 | 4.0.7 |
+| Ruby | 4.0.7 | 4.0.7, same installation |
 | Codex | native 0.166.0 | npm distribution 0.167.0 |
 
 Python 3.12.10 preserves the base interpreter used by existing virtual
-environments. Ruby 3.3.5 also satisfies landingPagePietro's pin. Other installed
+environments. Ruby 4.0.7 is shared by the global environment and Epub; landingPagePietro's
+legacy Ruby pin is migrated separately before removing its old installation. Other installed
 mise tools use one retained version selected globally. Historical Epub worktrees
 can still request older versions; explicitly install their requirements when
 returning to that historical checkout. Do not change their source pins as part
