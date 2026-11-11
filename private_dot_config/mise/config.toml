@@ -1,0 +1,20 @@
+# Arch defaults. Project mise.toml files override these exact versions.
+# Share the same installation whenever a project requests the global version.
+[tools]
+agent-browser = "0.39.0"
+android-sdk = "11.0"
+"aqua:git-lfs/git-lfs" = "3.8.1"
+"aqua:orhun/git-cliff" = "2.14.2"
+codex = "0.166.0"
+flutter = "3.47.9"
+"github:wasm-bindgen/wasm-bindgen" = "0.2.129"
+java = "21.0.2"
+ninja = "1.13.2"
+node = "26.13.0"
+npm = "12.2.2"
+python = "3.12.10"
+ruby = "3.3.5"
+rust = "1.99.1"
+sqlite = "3.46.0"
+usage = "6.12.1"
+yarn = "4.18.1"

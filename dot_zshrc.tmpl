@@ -372,8 +372,13 @@ mise() {
   mise "$@"
 }
 
+# Mise owns runtimes when present, including after reloading this file.
+if command -v mise >/dev/null 2>&1; then
+  unfunction node npm npx nvm rbenv _lazy_load_nvm 2>/dev/null
+fi
+
 # ── Rbenv — lazy ──────────────────────────────────────────────────────────────
-if command -v rbenv >/dev/null 2>&1; then
+if ! command -v mise >/dev/null 2>&1 && command -v rbenv >/dev/null 2>&1; then
   rbenv() {
     unfunction rbenv
     eval "$(command rbenv init - zsh)"
@@ -389,7 +394,7 @@ if [ ! -s "$NVM_SCRIPT" ] && [ -n "$HOMEBREW_PREFIX" ]; then
   NVM_SCRIPT="$HOMEBREW_PREFIX/opt/nvm/nvm.sh"
   NVM_COMPLETION="$HOMEBREW_PREFIX/opt/nvm/etc/bash_completion.d/nvm"
 fi
-if [ -s "$NVM_SCRIPT" ]; then
+if ! command -v mise >/dev/null 2>&1 && [ -s "$NVM_SCRIPT" ]; then
   _lazy_load_nvm() {
     unfunction nvm node npm npx 2>/dev/null
     \. "$NVM_SCRIPT"

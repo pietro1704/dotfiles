@@ -24,13 +24,15 @@ for arg in "$@"; do
 done
 maps=()
 if $codex_harness; then
+    native_dir=$("$HOME/.local/bin/codex-native-path")
     for name in codex codex-code-mode-host codex-exec-server; do
-        path="$HOME/.local/bin/$name"
-        if [[ ! -f $path || -L $path || ! -x $path ]]; then
+        path="$native_dir/$name"
+        if [[ -f $path && -x $path ]]; then
+            maps+=(--map "$path:$HOME/.local/bin/$name")
+        elif [[ $name == codex ]]; then
             printf 'ai-jail: executável nativo ausente: %s\n' "$path" >&2
             exit 127
         fi
-        maps+=(--map "$path")
     done
     exec "$binary" "${maps[@]}" "$@"
 fi

@@ -1,0 +1,39 @@
+#!/usr/bin/python3
+"""Find the native Codex selected by mise, without depending on its npm shim."""
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+
+def resolve_native(home):
+    mise = home / '.local/bin/mise'
+    selected = Path(subprocess.check_output([str(mise), 'which', 'codex'], text=True).strip()).resolve(strict=True)
+    installs = (home / '.local/share/mise/installs').resolve(strict=True)
+    relative = selected.relative_to(installs)
+    if len(relative.parts) < 3:
+        raise ValueError('invalid mise executable path')
+    install = installs.joinpath(*relative.parts[:2])
+
+    def native(path):
+        if not path.is_file() or not os.access(path, os.X_OK):
+            return False
+        with path.open('rb') as stream:
+            return stream.read(4) == b'\x7fELF'
+
+    if native(selected):
+        return selected.parent
+    candidates = {p.resolve() for p in install.rglob('codex')
+                  if p.parent.name in ('bin', 'codex') and 'vendor' in p.parts
+                  and native(p) and p.resolve().is_relative_to(install)}
+    if len(candidates) != 1:
+        raise ValueError('selected mise Codex installation has no unique native executable')
+    return candidates.pop().parent
+
+
+if __name__ == '__main__':
+    try:
+        print(resolve_native(Path.home()))
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        print(f'codex: cannot resolve the mise-selected native executable: {error}', file=sys.stderr)
+        sys.exit(127)
