@@ -116,3 +116,7 @@ absolute command paths are preserved. Configuration files are not touched.
 Shared libraries, service managers and shadowed standalone installations remain
 under their existing manager. A package that remains installed in Brew is still
 audited and may require a Brew-compatible build despite a MacPorts library archive.
+
+The binary stage, MacPorts migration selection, source queue and final inventory
+use Homebrew version ordering to preserve installed versions newer than the
+catalog. An upstream formula downgrade is never treated as a required update.

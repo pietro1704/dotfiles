@@ -44,6 +44,7 @@ class MacPortsFallback(unittest.TestCase):
             def run(args):
                 if args[:2]==['brew','outdated']:
                     return json.dumps({'formulae':[{'name':'gh','current_version':'2.103.3'}]})
+                if args[:2]==['brew','ruby']: return '[]'
                 if args[:2]==['brew','uses']: return ''
                 if args[:2]==['brew','--prefix']: return str(prefix)
                 if args[0].endswith('tclsh8.6'): return 'gh\t2.103.3\tgh-2.103.3_0.darwin_24.x86_64.tbz2'

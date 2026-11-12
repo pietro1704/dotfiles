@@ -2,7 +2,8 @@
 require "json"
 # AI archive updates use their dedicated, version-verified path.
 excluded = %w[ai-memory ai-jail]
-formulas = Formula.installed.select { |formula| formula.outdated? && !excluded.include?(formula.name) }
+formulas = Formula.installed.select { |formula| formula.outdated? && !excluded.include?(formula.name) &&
+  formula.installed_kegs.none? { |keg| keg.version > formula.pkg_version } }
 indexed = formulas.to_h { |formula| [formula.name, formula] }
 queue = []
 visited = {}

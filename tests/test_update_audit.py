@@ -12,13 +12,15 @@ spec.loader.exec_module(audit)
 
 
 class CompletionAudit(unittest.TestCase):
-    def run_audit(self, formulas=None, brew_error=False, ai_version='3.3.1'):
+    def run_audit(self, formulas=None, brew_error=False, ai_version='3.3.1', newer=None):
         formulas = formulas or []
         def run(args, **kwargs):
             if args[:2] == ['brew', 'outdated']:
                 if brew_error:
                     raise subprocess.CalledProcessError(1, args)
                 output = json.dumps({'formulae': formulas, 'casks': []})
+            elif args[:2] == ['brew', 'ruby']:
+                output = json.dumps(newer or [])
             elif args[0] == 'curl':
                 version = '3.3.1' if 'ai-jail' in args[-1] else '3.4.5'
                 output = json.dumps({'tag_name': 'v'+version, 'assets': []})
@@ -52,3 +54,7 @@ class CompletionAudit(unittest.TestCase):
 
     def test_local_tap_cannot_hide_new_ai_release(self):
         self.assertEqual(self.run_audit(ai_version='3.2.0'), 1)
+
+    def test_newer_installed_version_is_not_a_pending_downgrade(self):
+        item = {'name':'openssl@3', 'installed_versions':['3.6.5'], 'current_version':'3.5.9', 'pinned':False}
+        self.assertEqual(self.run_audit([item], newer=['openssl@3']), 0)

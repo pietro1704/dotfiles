@@ -17,7 +17,11 @@ def audit(dry_run=False):
     errors = []
     try:
         data = json.loads(read(["brew", "outdated", "--json=v2"]))
-        formulas = data["formulae"]
+        newer = set(json.loads(read(["brew", "ruby", str(Path(__file__).with_name("newer-versions.rb"))])))
+        formulas = [item for item in data["formulae"] if item["name"] not in newer]
+        for item in data["formulae"]:
+            if item["name"] in newer:
+                print(f"{item['name']}: versão instalada mais nova que o catálogo; preservada sem downgrade", flush=True)
         pinned = [item for item in formulas if item.get("pinned")]
         print(f"Brew: {len(formulas)} fórmulas pendentes, {len(pinned)} com pin; {len(data['casks'])} casks pendentes", flush=True)
         for item in formulas:

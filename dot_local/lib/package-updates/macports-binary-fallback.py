@@ -57,10 +57,11 @@ def main(dry_run=False):
         return 0
     failed = False
     data = json.loads(run(["brew", "outdated", "--json=v2"]))
+    newer = set(json.loads(run(["brew", "ruby", str(Path(__file__).with_name("newer-versions.rb"))])))
     for item in data["formulae"]:
         name = item["name"]
         command = COMMANDS.get(name)
-        if not command:
+        if not command or name in newer:
             continue
         try:
             if run(["brew", "uses", "--installed", "--include-build", "--include-test", name]):
