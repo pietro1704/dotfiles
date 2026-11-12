@@ -217,19 +217,44 @@ arch() {
 source "$HOME/.local/lib/package-updates/binary-updates.zsh"
 
 updateAll() {
-  local allow_compile=0 answer
-  if (( $# )); then
-    if [[ $# == 1 && $1 == --allow-compile ]]; then
-      allow_compile=1
-    else
-      print -u2 'Uso: updateAll [--allow-compile]'
-      return 2
-    fi
-  elif [[ -t 0 && -t 1 ]]; then
+  local allow_compile=0 dry_run=0 answer argument
+  for argument in "$@"; do
+    case $argument in
+      --allow-compile) allow_compile=1 ;;
+      --dry-run) dry_run=1 ;;
+      -h|--help) print 'Uso: updateAll [--dry-run] [--allow-compile]'; return 0 ;;
+      *) print -u2 'Uso: updateAll [--dry-run] [--allow-compile]'; return 2 ;;
+    esac
+  done
+  if (( !allow_compile && !dry_run )) && [[ -t 0 && -t 1 ]]; then
     read -r 'answer?Permitir compilações no final? [s/N] '
     case $answer in
       [sS]|[sS][iI][mM]|[yY]|[yY][eE][sS]) allow_compile=1 ;;
     esac
+  fi
+  if (( dry_run )); then
+    local dry_failed=0 dry_rc
+    print '→ Dry run: nenhum instalador, compilação ou remoção de pin será executado'
+    updatePackagesBinaryOnly --dry-run
+    dry_rc=$?
+    (( dry_rc == 130 )) && return 130
+    (( dry_rc )) && dry_failed=1
+    print '→ Planejado: oh-my-zsh, Codex, Mole, Claude Code e plugins tmux (quando instalados)'
+    print '· Herdr e Hermes continuam com atualização manual'
+    if (( allow_compile )); then
+      updatePackagesFromSource --dry-run
+      dry_rc=$?
+      (( dry_rc == 130 )) && return 130
+      (( dry_rc )) && dry_failed=1
+    else
+      print '· Compilações e liberação de pins desabilitadas'
+    fi
+    updatePackagesAudit --dry-run
+    dry_rc=$?
+    (( dry_rc == 130 )) && return 130
+    (( dry_rc )) && dry_failed=1
+    print '· Dry run não comprova sucesso das atualizações planejadas'
+    return "$dry_failed"
   fi
   export HOMEBREW_NO_AUTO_UPDATE=1
   export HOMEBREW_NO_ENV_HINTS=1
@@ -282,6 +307,12 @@ updateAll() {
     (( compile_rc == 130 )) && return 130
     (( compile_rc )) && failed=1
   fi
+
+  # Never report completion while the final package inventory still has pending versions.
+  updatePackagesAudit
+  local audit_rc=$?
+  (( audit_rc == 130 )) && return 130
+  (( audit_rc )) && failed=1
 
   if (( failed )); then
     echo '⚠ updateAll terminou com falhas'

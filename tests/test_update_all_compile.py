@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class CompileConsent(unittest.TestCase):
-    def run_update(self, args='', reply=None, source_rc=0, binary_rc=0):
+    def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0):
         function = re.findall(r'^updateAll\(\) \{\n.*?^\}', (ROOT/'dot_zshrc.tmpl').read_text(), re.M|re.S)[-1]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)/'bin'
@@ -22,7 +22,7 @@ class CompileConsent(unittest.TestCase):
                 drain = '/bin/cat >/dev/null\n' if name == 'bash' else ''
                 path.write_text('#!/bin/sh\n'+drain+'echo ordinary-'+name+'\nexit 0\n')
                 path.chmod(0o755)
-            script = f'updatePackagesBinaryOnly() {{ print binary; return {binary_rc}; }}\nupdatePackagesFromSource() {{ print SOURCE; return {source_rc}; }}\n' + function + f'\nupdateAll {args}\n'
+            script = f'updatePackagesAudit() {{ print audit-$*; return {audit_rc}; }}\nupdatePackagesBinaryOnly() {{ print binary-$*; return {binary_rc}; }}\nupdatePackagesFromSource() {{ print SOURCE-$*; return {source_rc}; }}\n' + function + f'\nupdateAll {args}\n'
             env = dict(os.environ, HOME=tmp, PATH=str(bindir), ZSH=tmp+'/absent')
             if reply is None:
                 result = subprocess.run(['/bin/zsh', '-f', '-c', script], env=env, text=True, capture_output=True, timeout=10)
@@ -85,3 +85,21 @@ class CompileConsent(unittest.TestCase):
         rc, output = self.run_update('--bad')
         self.assertEqual(rc, 2, output)
         self.assertNotIn('binary', output)
+
+    def test_pending_final_audit_prevents_false_success(self):
+        for args in ('', '--allow-compile'):
+            rc, output = self.run_update(args, audit_rc=1)
+            self.assertEqual(rc, 1, output)
+            self.assertNotIn('✓ updateAll concluído', output)
+            self.assertIn('audit-', output)
+
+    def test_full_dry_run_never_runs_installers_and_forwards_flags(self):
+        for args in ('--dry-run', '--dry-run --allow-compile', '--allow-compile --dry-run'):
+            rc, output = self.run_update(args, audit_rc=1)
+            self.assertEqual(rc, 1, output)
+            self.assertIn('binary---dry-run', output)
+            self.assertIn('audit---dry-run', output)
+            self.assertNotIn('ordinary-', output)
+            self.assertNotIn('[s/N]', output)
+            self.assertEqual('SOURCE---dry-run' in output, '--allow-compile' in args)
+            self.assertNotIn('✓ updateAll concluído', output)

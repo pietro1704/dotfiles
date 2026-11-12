@@ -1,3 +1,8 @@
+# Final read-only inventory. Pending packages make updateAll incomplete.
+updatePackagesAudit() {
+  command python3 "$HOME/.local/lib/package-updates/audit-updates.py" "$@"
+}
+
 # Called only as the last updateAll phase after explicit consent.
 updatePackagesFromSource() {
   command python3 "$HOME/.local/lib/package-updates/source-updates.py" --allow-compile "$@"
@@ -30,6 +35,11 @@ updateBrewBinaryOnly() {
   if [[ $mode == apply ]]; then
     command brew update || return $?
   fi
+  # Prefer MacPorts binary alternatives for independent CLI apps before Brew source fallback.
+  command python3 "$HOME/.local/lib/package-updates/macports-binary-fallback.py" "$@"
+  rc=$?
+  (( rc == 130 )) && return "$rc"
+  (( rc )) && failed=1
   print '→ Homebrew: compatible bottles and casks only; source builds disabled'
   HOMEBREW_BINARY_UPDATE_MODE="$mode" command brew ruby "$helper"
   rc=$?

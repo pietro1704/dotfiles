@@ -72,7 +72,9 @@ module BinaryPackageUpdates
     end
 
     excluded = ENV.fetch("HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE", "").split(",")
-    names = Formula.installed.select(&:outdated?).reject(&:pinned?).map(&:full_name)
+    names = Formula.installed.select(&:outdated?).reject(&:pinned?).reject do |formula|
+      formula.installed_kegs.any? { |keg| keg.version > formula.pkg_version }
+    end.map(&:full_name)
     names.reject! { |name| excluded.include?(name.split("/").last) }
     if mode == "audit"
       names.each do |name|

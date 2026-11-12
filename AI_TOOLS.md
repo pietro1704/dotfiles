@@ -76,7 +76,10 @@ explicit yes enables the final source queue. `updateAll --allow-compile`
 enables it without a prompt. Noninteractive execution defaults to no builds.
 Brew/MacPorts applications lacking current compatible binaries are retried
 individually in the final queue. A failed app is reported and the next is tried;
-Ctrl-C cancels. Pinned and previously excluded/manual Brew packages stay excluded.
+Ctrl-C cancels. The final compilation stage releases existing pins before processing dependencies.
+No new pins are created. All Brew formulas, including previous source exclusions,
+participate in the opted-in queue. The separate Herdr/Hermes launchers are not
+invoked by this package-manager phase.
 Each build checks 8 GiB free and uses two jobs. No caches or data are deleted by
 this queue; toolchain/platform errors are reported rather than overriding pins.
 All ordinary updates run before the source queue.
@@ -90,3 +93,30 @@ are backed up under `~/.local/state/ai-tools-migration-*` and atomically replace
 by symlinks to Brew's stable `opt` paths, preserving absolute-path integrations.
 Configurations, hooks, data stores and service definitions are left intact.
 Running servers need a separate controlled restart to load the new executable.
+
+`updateAll --dry-run` plans package updates without running installers,
+changing pins, or compiling. Add `--allow-compile` to include the final source
+queue and planned pin removal. The final read-only inventory checks every
+installed Brew formula/cask, MacPorts updates, and stable AI release versions.
+Pending updates or a failed inventory return nonzero and suppress the completion
+message. A dry run reports the current state; it cannot prove that compilation
+will succeed. Brew/MacPorts metadata is read from current local catalogs.
+
+Prefer compatible prebuilt archives, including MacPorts, before compilation.
+MacPorts' binary-only updater runs before Brew's binary-only phase. A MacPorts
+archive cannot replace a Homebrew library in place: cross-manager migration
+requires checking the installed dependents and command/configuration paths.
+
+For independent CLI apps, the binary stage probes official MacPorts archive and
+signature URLs for this host, requires the same upstream version, and checks
+Brew reverse dependencies and executable identity. It uses `port -b` so missing
+binary dependencies cannot trigger compilation. Only after installation and
+version verification does it back up and remove the obsolete Brew app; stable
+absolute command paths are preserved. Configuration files are not touched.
+Shared libraries, service managers and shadowed standalone installations remain
+under their existing manager. A package that remains installed in Brew is still
+audited and may require a Brew-compatible build despite a MacPorts library archive.
+
+The binary stage, MacPorts migration selection, source queue and final inventory
+use Homebrew version ordering to preserve installed versions newer than the
+catalog. An upstream formula downgrade is never treated as a required update.

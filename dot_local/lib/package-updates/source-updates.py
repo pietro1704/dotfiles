@@ -21,7 +21,7 @@ def execute(args, capture=False):
 def compile_queue(queue, dry_run=False):
     failed = []
     for name, command in queue:
-        print(f"Compilation queue: {name}", flush=True)
+        print(f"Compilation queue (se ainda pendente após binários): {name}", flush=True)
         if dry_run:
             continue
         try:
@@ -34,18 +34,35 @@ def compile_queue(queue, dry_run=False):
     return failed
 
 
+def release_pins(names, dry_run=False):
+    failed = []
+    for name in names:
+        print(f"{'Planejado liberar pin' if dry_run else 'Liberando pin'}: {name}", flush=True)
+        if dry_run:
+            continue
+        try:
+            execute(["brew", "unpin", name])
+        except (OSError, subprocess.CalledProcessError) as error:
+            failed.append(name)
+            print(f"Failed to release pin: {name}: {error}; continuing", flush=True)
+    return failed
+
+
 def main(dry_run=False):
     base = Path(__file__).resolve().parent
     os.environ.update(HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_NO_INSTALL_CLEANUP="1",
                       HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK="1", HOMEBREW_MAKE_JOBS="2")
-    queue, failed = [], []
+    queue, failed, pinned = [], [], []
     try:
         names = json.loads(execute(["brew", "ruby", str(base / "homebrew-source-plan.rb")], capture=True))
-        for name in names:
+        for item in names:
+            name = item["name"]
+            if item["pinned"]:
+                pinned.append(name)
             if not re.fullmatch(r"[A-Za-z0-9_@.+/-]+", name):
                 raise RuntimeError("Invalid Brew formula name")
             queue.append((f"brew:{name}", ["brew", "upgrade", "--formula", name]))
-    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.CalledProcessError) as error:
         failed.append("Brew source inventory")
         print(f"Source inventory failed: {error}; continuing", flush=True)
     if shutil.which("port"):
@@ -64,6 +81,10 @@ def main(dry_run=False):
     if dry_run:
         ai.append("--dry-run")
     queue.append(("ai-jail stable Intel fallback", ai))
+    # Release the whole dependency queue before builds, avoiding failures caused by pinned dependencies.
+    pin_failures = release_pins(pinned, dry_run)
+    failed.extend("pin:" + name for name in pin_failures)
+    queue = [(name, command) for name, command in queue if name.removeprefix("brew:") not in pin_failures]
     failed.extend(compile_queue(queue, dry_run))
     if failed:
         print("Failed compilations: " + ", ".join(failed), flush=True)

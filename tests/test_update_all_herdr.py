@@ -38,7 +38,7 @@ class ManualHerdrUpdates(unittest.TestCase):
                             executable.write_text('#!/bin/sh\nprintf "%s\\n" "$*" > "$HOME/herdr-called"\n' + f'exit {herdr_rc}\n')
                             executable.chmod(0o755)
                         script = f'updatePackagesBinaryOnly() {{ print packages-ran; return {package_rc}; }}\n'
-                        script += 'updateCodex() { return 0; }\n' + functions[-1] + '\nupdateAll\n'
+                        script += 'updatePackagesAudit() { return 0; }\nupdateCodex() { return 0; }\n' + functions[-1] + '\nupdateAll\n'
                         result = subprocess.run(['/bin/zsh', '-f', '-c', script],
                             env={'HOME': tmp, 'PATH': str(bindir), 'ZSH': str(home/'absent'), 'HERDR_ENV': 'nested-test'},
                             capture_output=True, text=True, timeout=10)
