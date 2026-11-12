@@ -1,3 +1,13 @@
+# Called only as the last updateAll phase after explicit consent.
+updatePackagesFromSource() {
+  command python3 "$HOME/.local/lib/package-updates/source-updates.py" --allow-compile "$@"
+}
+
+# Stable AI archives; source builds require explicit opt-in.
+updateAiToolsBrew() {
+  command python3 "$HOME/.local/lib/package-updates/ai-tools-brew.py" "$@"
+}
+
 # Shared by updateAll and ~/.updateBrew.sh. No shell startup side effects.
 updateBrewBinaryOnly() {
   local failed=0 mode=apply rc
@@ -5,7 +15,7 @@ updateBrewBinaryOnly() {
   local -x HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
   local -x HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_ENV_HINTS=1
   local -x HOMEBREW_NO_INSTALL_UPGRADE=1
-  local skip_formulae=(edencommon fb303 fbthrift fizz folly mvfst wangle llvm llvm@22 watchman xcodes mise herdr)
+  local skip_formulae=(edencommon fb303 fbthrift fizz folly mvfst wangle llvm llvm@22 watchman xcodes mise herdr ai-memory ai-jail)
   local -x HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE="${(j:,:)skip_formulae}"
   if [[ ${1:-} == --dry-run && $# == 1 ]]; then
     mode=dry-run
@@ -26,6 +36,11 @@ updateBrewBinaryOnly() {
   (( rc == 130 )) && return "$rc"
   (( rc )) && failed=1
   HOMEBREW_BINARY_UPDATE_MODE="cask-$mode" command brew ruby "$helper"
+  rc=$?
+  (( rc == 130 )) && return "$rc"
+  (( rc )) && failed=1
+  # Stable AI archives are not Brew bottles. Only ai-jail has an Intel source exception.
+  updateAiToolsBrew "$@"
   rc=$?
   (( rc == 130 )) && return "$rc"
   (( rc )) && failed=1

@@ -217,6 +217,20 @@ arch() {
 source "$HOME/.local/lib/package-updates/binary-updates.zsh"
 
 updateAll() {
+  local allow_compile=0 answer
+  if (( $# )); then
+    if [[ $# == 1 && $1 == --allow-compile ]]; then
+      allow_compile=1
+    else
+      print -u2 'Uso: updateAll [--allow-compile]'
+      return 2
+    fi
+  elif [[ -t 0 && -t 1 ]]; then
+    read -r 'answer?Permitir compilações no final? [s/N] '
+    case $answer in
+      [sS]|[sS][iI][mM]|[yY]|[yY][eE][sS]) allow_compile=1 ;;
+    esac
+  fi
   export HOMEBREW_NO_AUTO_UPDATE=1
   export HOMEBREW_NO_ENV_HINTS=1
   export HOMEBREW_NO_INSTALL_CLEANUP=1
@@ -258,6 +272,15 @@ updateAll() {
       git -C "$plugin_dir" pull --ff-only || true
     done
     tmux run-shell "$HOME/.tmux/plugins/tpm/scripts/clean_plugins.sh" >/dev/null 2>&1 || true
+  fi
+
+  # Compilations are last, after every ordinary updater, and remain opt-in.
+  if (( allow_compile )); then
+    echo '→ Etapa final: atualizações que podem compilar...'
+    updatePackagesFromSource
+    local compile_rc=$?
+    (( compile_rc == 130 )) && return 130
+    (( compile_rc )) && failed=1
   fi
 
   if (( failed )); then
