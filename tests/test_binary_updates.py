@@ -16,7 +16,7 @@ class BinaryUpdates(unittest.TestCase):
             target.symlink_to(LIB)
             bindir = home / 'bin'
             bindir.mkdir()
-            for name in ('brew', 'port', 'sudo'):
+            for name in ('brew', 'port', 'sudo', 'python3'):
                 path = bindir / name
                 path.write_text('#!/bin/zsh\nprint -r -- "${0:t} $* mode=${HOMEBREW_BINARY_UPDATE_MODE:-} skip=${HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE:-}" >> "$LOG"\n[[ "$*" == "$FAIL" ]] && exit "$RC"\n[[ -n "$FAIL_MODE" && "${HOMEBREW_BINARY_UPDATE_MODE:-}" == "$FAIL_MODE" ]] && exit "$RC"\nexit 0\n')
                 path.chmod(0o755)
@@ -69,6 +69,21 @@ class BinaryUpdates(unittest.TestCase):
         formula_calls = [line for line in log.splitlines() if ' mode=dry-run ' in line]
         self.assertEqual(len(formula_calls), 1)
         self.assertIn('herdr', formula_calls[0].split(' skip=')[1].split(','))
+
+    def test_ai_tools_get_dry_run_and_failures_are_reported(self):
+        result, log = self.run_update('updateBrewBinaryOnly --dry-run')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('ai-tools-brew.py --dry-run', log)
+        for code in (1, 130):
+            # Match the Python helper by a suffix in a separate focused shell probe.
+            with tempfile.TemporaryDirectory() as tmp:
+                helper = Path(tmp) / 'python3'
+                helper.write_text(f'#!/bin/sh\nexit {code}\n')
+                helper.chmod(0o755)
+                script = f'source "{LIB}/binary-updates.zsh"\nbrew() {{ return 0; }}\nupdateBrewBinaryOnly --dry-run'
+                env = dict(os.environ, PATH=tmp+':/usr/bin:/bin')
+                run = subprocess.run(['/bin/zsh', '-f', '-c', script], env=env, capture_output=True, text=True)
+                self.assertEqual(run.returncode, code, run.stderr)
 
     def test_unknown_argument_does_nothing(self):
         result, log = self.run_update('updatePackagesBinaryOnly --oops')
