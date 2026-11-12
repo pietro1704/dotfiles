@@ -19,7 +19,8 @@ class CompileConsent(unittest.TestCase):
             bindir.mkdir()
             for name in ('curl', 'bash', 'claude'):
                 path = bindir/name
-                path.write_text('#!/bin/sh\necho ordinary-'+name+'\nexit 0\n')
+                drain = '/bin/cat >/dev/null\n' if name == 'bash' else ''
+                path.write_text('#!/bin/sh\n'+drain+'echo ordinary-'+name+'\nexit 0\n')
                 path.chmod(0o755)
             script = f'updatePackagesBinaryOnly() {{ print binary; return {binary_rc}; }}\nupdatePackagesFromSource() {{ print SOURCE; return {source_rc}; }}\n' + function + f'\nupdateAll {args}\n'
             env = dict(os.environ, HOME=tmp, PATH=str(bindir), ZSH=tmp+'/absent')

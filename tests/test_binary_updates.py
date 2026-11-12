@@ -77,11 +77,17 @@ class BinaryUpdates(unittest.TestCase):
         for code in (1, 130):
             # Match the Python helper by a suffix in a separate focused shell probe.
             with tempfile.TemporaryDirectory() as tmp:
+                target = Path(tmp) / '.local/lib/package-updates'
+                target.parent.mkdir(parents=True)
+                target.symlink_to(LIB)
+                brew = Path(tmp) / 'brew'
+                brew.write_text('#!/bin/sh\nexit 0\n')
+                brew.chmod(0o755)
                 helper = Path(tmp) / 'python3'
                 helper.write_text(f'#!/bin/sh\nexit {code}\n')
                 helper.chmod(0o755)
                 script = f'source "{LIB}/binary-updates.zsh"\nbrew() {{ return 0; }}\nupdateBrewBinaryOnly --dry-run'
-                env = dict(os.environ, PATH=tmp+':/usr/bin:/bin')
+                env = dict(os.environ, HOME=tmp, PATH=tmp+':/usr/bin:/bin')
                 run = subprocess.run(['/bin/zsh', '-f', '-c', script], env=env, capture_output=True, text=True)
                 self.assertEqual(run.returncode, code, run.stderr)
 

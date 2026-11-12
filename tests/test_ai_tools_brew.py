@@ -96,3 +96,16 @@ class AiToolsBrew(unittest.TestCase):
     def test_source_queue_cannot_run_without_permission(self):
         result = subprocess.run(['python3', str(ROOT/'dot_local/lib/package-updates/ai-tools-brew.py'), '--source-only'], capture_output=True, text=True)
         self.assertEqual(result.returncode, 2)
+
+    def test_official_binary_installs_without_source_permission(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = Path(tmp)
+            tap = prefix/'Homebrew/Library/Taps/pietro1704/homebrew-ai-tools-local'
+            tap.mkdir(parents=True)
+            with patch.object(updater.platform, 'machine', return_value='x86_64'), patch.object(updater, 'run', return_value='{"formulae": []}') as run, patch.object(updater, 'fetch', return_value='a'*64+'  archive.tar.gz') as fetch, patch.object(updater, 'migrate') as migrate, patch.object(updater.shutil, 'disk_usage') as disk:
+                updater.update_jail(prefix, prefix, '3.3.1', {'ai-jail-macos-x86_64.tar.gz'}, False, False)
+                self.assertIn('ai-jail-macos-x86_64.tar.gz.sha256', fetch.call_args.args[0])
+                self.assertIn(unittest.mock.call('brew', 'install', updater.TAP+'/ai-jail'), run.call_args_list)
+                disk.assert_not_called()
+                migrate.assert_called_once_with('ai-jail', prefix, prefix)
+                self.assertNotIn('cargo', (tap/'Formula/ai-jail.rb').read_text())

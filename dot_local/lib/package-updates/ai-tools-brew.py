@@ -85,6 +85,8 @@ def state_dir(home):
 
 
 def update_jail(prefix, home, version, assets, source, allow_compile):
+    arch = "x86_64" if platform.machine() == "x86_64" else "aarch64"
+    asset = f"ai-jail-macos-{arch}.tar.gz"
     tapdir = prefix / "Homebrew/Library/Taps/pietro1704/homebrew-ai-tools-local"
     path = tapdir / "Formula/ai-jail.rb"
     info = json.loads(run("brew", "info", "--json=v2", "--installed", capture=True))
@@ -156,8 +158,8 @@ def update(dry_run=False, allow_compile=False, source_only=False):
             run("brew", "upgrade" if "ai-memory" in installed else "install", "akitaonrails/tap/ai-memory")
             run("brew", "test", "akitaonrails/tap/ai-memory")
             migrate("ai-memory", prefix, home)
-        except subprocess.CalledProcessError as error:
-            if error.returncode in (130, -2):
+        except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+            if isinstance(error, subprocess.CalledProcessError) and error.returncode in (130, -2):
                 raise KeyboardInterrupt from error
             failed.append("ai-memory")
             print(f"ai-memory update failed: {error}; continuing", flush=True)
