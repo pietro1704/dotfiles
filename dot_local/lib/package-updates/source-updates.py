@@ -72,7 +72,7 @@ def main(dry_run=False):
                 columns = line.split()
                 if columns and re.fullmatch(r"[A-Za-z0-9_.+-]+", columns[0]) and "<" in columns:
                     name = columns[0]
-                    queue.append((f"port:{name}", ["sudo", "port", "-N", "upgrade", name, "buildmakejobs=2"]))
+                    queue.append((f"port:{name}", ["sudo", "port", "-N", "-s", "upgrade", name, "buildmakejobs=2"]))
         except (OSError, subprocess.CalledProcessError) as error:
             failed.append("MacPorts source inventory")
             print(f"Source inventory failed: {error}; continuing", flush=True)
