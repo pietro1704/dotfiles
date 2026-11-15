@@ -61,7 +61,7 @@ updateBrewBinaryOnly() {
 }
 
 updatePackagesBinaryOnly() {
-  local failed=0 mode=apply rc
+  local failed=0 mode=apply rc macports_log_dir macports_log
   if [[ ${1:-} == --dry-run && $# == 1 ]]; then
     mode=dry-run
   elif (( $# )); then
@@ -74,11 +74,33 @@ updatePackagesBinaryOnly() {
     command port -N -b -y upgrade outdated
     rc=$?
   else
-    command sudo port -N sync
-    rc=$?
-    if (( rc == 0 )); then
-      command sudo port -N -b upgrade outdated
+    macports_log_dir="$HOME/.local/state/updateAll"
+    if ! command mkdir -p "$macports_log_dir"; then
+      print -u2 "✗ Não foi possível criar diretório de logs do updateAll: $macports_log_dir"
+      failed=1
+    else
+      macports_log="$macports_log_dir/macports-$(command date '+%Y%m%d-%H%M%S').log"
+      print "· Log MacPorts: $macports_log"
+    fi
+    if (( failed == 0 )); then
+      (set -o pipefail; command sudo port -N sync 2>&1 | command tee -a "$macports_log")
       rc=$?
+    else
+      rc=1
+    fi
+    (( rc == 130 )) && return "$rc"
+    if (( rc )); then
+      print -u2 "✗ MacPorts sync falhou (código $rc); saída: ${macports_log:-indisponível}"
+      failed=1
+    fi
+    if (( rc == 0 )); then
+      (set -o pipefail; command sudo port -N -b upgrade outdated 2>&1 | command tee -a "$macports_log")
+      rc=$?
+      (( rc == 130 )) && return "$rc"
+      if (( rc )); then
+        print -u2 "✗ MacPorts upgrade binário falhou (código $rc); saída: $macports_log"
+        failed=1
+      fi
     fi
   fi
   (( rc == 130 )) && return "$rc"
