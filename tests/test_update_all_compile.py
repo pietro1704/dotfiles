@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class CompileConsent(unittest.TestCase):
-    def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0):
+    def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0, metadata_failed=0):
         function = re.findall(r'^updateAll\(\) \{\n.*?^\}', (ROOT/'dot_zshrc.tmpl').read_text(), re.M|re.S)[-1]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)/'bin'
@@ -22,7 +22,7 @@ class CompileConsent(unittest.TestCase):
                 drain = '/bin/cat >/dev/null\n' if name == 'bash' else ''
                 path.write_text('#!/bin/sh\n'+drain+'echo ordinary-'+name+'\nexit 0\n')
                 path.chmod(0o755)
-            script = f'updatePackagesAudit() {{ print audit-$*; return {audit_rc}; }}\nupdatePackagesBinaryOnly() {{ print binary-$*; return {binary_rc}; }}\nupdatePackagesFromSource() {{ print SOURCE-$*; return {source_rc}; }}\n' + function + f'\nupdateAll {args}\n'
+            script = f'updatePackagesAudit() {{ print audit-$*; return {audit_rc}; }}\nupdatePackagesBinaryOnly() {{ print binary-$*; UPDATE_PACKAGES_METADATA_FAILED={metadata_failed}; return {binary_rc}; }}\nupdatePackagesFromSource() {{ print SOURCE-$*; return {source_rc}; }}\n' + function + f'\nupdateAll {args}\n'
             env = dict(os.environ, HOME=tmp, PATH=str(bindir), ZSH=tmp+'/absent')
             if reply is None:
                 result = subprocess.run(['/bin/zsh', '-f', '-c', script], env=env, text=True, capture_output=True, timeout=10)
@@ -72,9 +72,20 @@ class CompileConsent(unittest.TestCase):
     def test_flag_compiles_last_even_when_binary_failed(self):
         for binary_rc in (0, 1):
             rc, output = self.run_update('--allow-compile', binary_rc=binary_rc)
-            self.assertEqual(rc, binary_rc, output)
+            self.assertEqual(rc, 0, output)
             self.assertNotIn('[s/N]', output)
             self.assertGreater(output.index('SOURCE'), output.index('ordinary-claude'))
+            if binary_rc:
+                self.assertIn('Falha binária recuperada', output)
+
+    def test_binary_failure_without_compile_remains_failure(self):
+        rc, output = self.run_update(binary_rc=1)
+        self.assertEqual(rc, 1, output)
+
+    def test_failed_metadata_sync_cannot_be_cleared_by_final_inventory(self):
+        rc, output = self.run_update('--allow-compile', binary_rc=1, metadata_failed=1)
+        self.assertEqual(rc, 1, output)
+        self.assertNotIn('Falha binária recuperada', output)
 
     def test_failed_source_sets_final_status_and_cancel_is_preserved(self):
         for source_rc in (1, 130):

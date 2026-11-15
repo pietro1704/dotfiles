@@ -70,10 +70,16 @@ class BinaryUpdates(unittest.TestCase):
         self.assertIn('MacPorts upgrade binário falhou (código 1)', result.stderr)
 
     def test_macports_sync_failure_names_phase_and_skips_upgrade(self):
-        result, log = self.run_update('updatePackagesBinaryOnly', 1, 'port -N sync')
+        result, log = self.run_update('updatePackagesBinaryOnly; rc=$?; print metadata=$UPDATE_PACKAGES_METADATA_FAILED; return $rc', 1, 'port -N sync')
         self.assertEqual(result.returncode, 1)
         self.assertIn('MacPorts sync falhou (código 1)', result.stderr)
+        self.assertIn('metadata=1', result.stdout)
         self.assertNotIn('sudo port -N -b upgrade outdated', log)
+
+    def test_failed_brew_update_marks_catalog_metadata_stale(self):
+        result, _ = self.run_update('updateBrewBinaryOnly; rc=$?; print metadata=$UPDATE_PACKAGES_METADATA_FAILED; return $rc', 1, 'update')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('metadata=1', result.stdout)
 
     def test_manual_herdr_is_excluded_from_brew_updates(self):
         result, log = self.run_update('updateBrewBinaryOnly --dry-run')

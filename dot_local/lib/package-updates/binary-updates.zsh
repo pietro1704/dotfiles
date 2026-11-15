@@ -33,7 +33,11 @@ updateBrewBinaryOnly() {
     return 1
   fi
   if [[ $mode == apply ]]; then
-    command brew update || return $?
+    command brew update || {
+      rc=$?
+      UPDATE_PACKAGES_METADATA_FAILED=1
+      return "$rc"
+    }
   fi
   # Prefer MacPorts binary alternatives for independent CLI apps before Brew source fallback.
   command python3 "$HOME/.local/lib/package-updates/macports-binary-fallback.py" "$@"
@@ -62,6 +66,7 @@ updateBrewBinaryOnly() {
 
 updatePackagesBinaryOnly() {
   local failed=0 mode=apply rc macports_log_dir macports_log
+  UPDATE_PACKAGES_METADATA_FAILED=0
   if [[ ${1:-} == --dry-run && $# == 1 ]]; then
     mode=dry-run
   elif (( $# )); then
@@ -91,6 +96,7 @@ updatePackagesBinaryOnly() {
     (( rc == 130 )) && return "$rc"
     if (( rc )); then
       print -u2 "✗ MacPorts sync falhou (código $rc); saída: ${macports_log:-indisponível}"
+      UPDATE_PACKAGES_METADATA_FAILED=1
       failed=1
     fi
     if (( rc == 0 )); then
