@@ -42,7 +42,8 @@ class ManualHerdrUpdates(unittest.TestCase):
                         result = subprocess.run(['/bin/zsh', '-f', '-c', script],
                             env={'HOME': tmp, 'PATH': str(bindir), 'ZSH': str(home/'absent'), 'HERDR_ENV': 'nested-test'},
                             capture_output=True, text=True, timeout=10)
-                        self.assertEqual(result.returncode, int(bool(package_rc)), result.stdout+result.stderr)
+                        expected = 130 if package_rc == 130 else int(bool(package_rc))
+                        self.assertEqual(result.returncode, expected, result.stdout+result.stderr)
                         self.assertIn('packages-ran', result.stdout)
                         self.assertFalse((home/'herdr-called').exists(), 'updateAll invoked Herdr')
                         self.assertNotIn('Atualizando Herdr', result.stdout)

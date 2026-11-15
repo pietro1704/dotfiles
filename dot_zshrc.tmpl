@@ -262,8 +262,20 @@ updateAll() {
   export HOMEBREW_NO_INSTALL_UPGRADE=1
   export NONINTERACTIVE=1
 
-  local failed=0
-  updatePackagesBinaryOnly || failed=1
+  local failed=0 binary_failed=0 metadata_failed=0 binary_rc
+  UPDATE_PACKAGES_METADATA_FAILED=0
+  updatePackagesBinaryOnly
+  binary_rc=$?
+  (( binary_rc == 130 )) && return 130
+  if (( binary_rc )); then
+    if (( allow_compile )); then
+      binary_failed=1
+      metadata_failed=${UPDATE_PACKAGES_METADATA_FAILED:-0}
+      print "· Etapa binária terminou com código $binary_rc; a fila de compilação e a auditoria final vão revalidar os pacotes"
+    else
+      failed=1
+    fi
+  fi
 
   if [[ -x "$ZSH/tools/upgrade.sh" ]]; then
     echo '→ Atualizando oh-my-zsh...'
@@ -313,6 +325,14 @@ updateAll() {
   local audit_rc=$?
   (( audit_rc == 130 )) && return 130
   (( audit_rc )) && failed=1
+
+  if (( binary_failed )); then
+    if (( compile_rc == 0 && audit_rc == 0 && metadata_failed == 0 )); then
+      print '✓ Falha binária recuperada; fila de compilação e auditoria final confirmaram os pacotes'
+    else
+      failed=1
+    fi
+  fi
 
   if (( failed )); then
     echo '⚠ updateAll terminou com falhas'
