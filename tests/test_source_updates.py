@@ -56,3 +56,15 @@ class SourceUpdates(unittest.TestCase):
             self.assertEqual(source.main(), 0)
             commands = [c.args[0] for c in runner.call_args_list]
             self.assertLess(commands.index(['brew','unpin','rust']), commands.index(['brew','upgrade','--formula','rust']))
+
+    def test_macports_source_queue_forces_source_build(self):
+        def execute(args, capture=False):
+            if args[:2] == ['brew', 'ruby']:
+                return '[]'
+            if args[:3] == ['port', '-q', 'outdated']:
+                return 'libvpx @1.15.0 < 1.17.0 (、新規バージョンがあります)'
+            return ''
+        with patch.object(source, 'execute', side_effect=execute) as runner, patch.object(source.shutil, 'which', return_value='/opt/local/bin/port'), patch.object(source.shutil, 'disk_usage', return_value=type('Disk', (), {'free': 20*1024**3})()):
+            self.assertEqual(source.main(), 0)
+            commands = [c.args[0] for c in runner.call_args_list]
+            self.assertIn(['sudo', 'port', '-N', '-s', 'upgrade', 'libvpx', 'buildmakejobs=2'], commands)
