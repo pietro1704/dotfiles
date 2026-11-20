@@ -9,10 +9,11 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+CLEAR_SCREEN = '\x1b[H\x1b[J'
 
 
 class CompileConsent(unittest.TestCase):
-    def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0, metadata_failed=0):
+    def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0, metadata_failed=0, term='xterm-256color'):
         function = re.findall(r'^updateAll\(\) \{\n.*?^\}', (ROOT/'dot_zshrc.tmpl').read_text(), re.M|re.S)[-1]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)/'bin'
@@ -22,8 +23,9 @@ class CompileConsent(unittest.TestCase):
                 drain = '/bin/cat >/dev/null\n' if name == 'bash' else ''
                 path.write_text('#!/bin/sh\n'+drain+'echo ordinary-'+name+'\nexit 0\n')
                 path.chmod(0o755)
+            (bindir/'tput').symlink_to('/usr/bin/tput')
             script = f'updatePackagesAudit() {{ print audit-$*; return {audit_rc}; }}\nupdatePackagesBinaryOnly() {{ print binary-$*; UPDATE_PACKAGES_METADATA_FAILED={metadata_failed}; return {binary_rc}; }}\nupdatePackagesFromSource() {{ print SOURCE-$*; return {source_rc}; }}\n' + function + f'\nupdateAll {args}\n'
-            env = dict(os.environ, HOME=tmp, PATH=str(bindir), ZSH=tmp+'/absent')
+            env = dict(os.environ, HOME=tmp, PATH=str(bindir), ZSH=tmp+'/absent', TERM=term)
             if reply is None:
                 result = subprocess.run(['/bin/zsh', '-f', '-c', script], env=env, text=True, capture_output=True, timeout=10)
                 return result.returncode, result.stdout+result.stderr
@@ -61,6 +63,21 @@ class CompileConsent(unittest.TestCase):
         self.assertEqual(rc, 0, output)
         self.assertNotIn('SOURCE', output)
         self.assertNotIn('[s/N]', output)
+        self.assertNotIn(CLEAR_SCREEN, output)
+
+    def test_clears_terminal_once_before_prompt(self):
+        rc, output = self.run_update(reply='\n')
+        self.assertEqual(rc, 0, output)
+        self.assertEqual(output.count(CLEAR_SCREEN), 1, output)
+        self.assertLess(output.index(CLEAR_SCREEN), output.index('[s/N]'))
+        self.assertNotIn('\x1b[3J', output)
+
+    def test_runs_when_terminal_cannot_be_cleared(self):
+        for term in ('dumb', 'invalid-test-terminal'):
+            with self.subTest(term=term):
+                rc, output = self.run_update(reply='\n', term=term)
+                self.assertEqual(rc, 0, output)
+                self.assertNotIn(CLEAR_SCREEN, output)
 
     def test_terminal_default_no_and_explicit_yes(self):
         for reply, enabled in [('\n', False), ('n\n', False), ('s\n', True), ('sim\n', True)]:
