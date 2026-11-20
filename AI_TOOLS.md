@@ -102,6 +102,12 @@ Pending updates or a failed inventory return nonzero and suppress the completion
 message. A dry run reports the current state; it cannot prove that compilation
 will succeed. Brew/MacPorts metadata is read from current local catalogs.
 
+On the Mac, the cleanup step runs `cargo clean --offline` for the Cargo
+caches at `~/ai-memory/target` and `~/Developer/ai-jail-pasteboard/target`.
+It skips unverified directories and caches with open files. The dry run uses
+`cargo clean --dry-run` to show the files and space that would be reclaimed.
+The next local build regenerates these caches.
+
 Prefer compatible prebuilt archives, including MacPorts, before compilation.
 MacPorts' binary-only updater runs before Brew's binary-only phase. A MacPorts
 archive cannot replace a Homebrew library in place: cross-manager migration

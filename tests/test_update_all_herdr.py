@@ -43,6 +43,7 @@ updatePackagesPreview() { return 0; }
 updateRubyFromSource() { return 0; }
 updatePackagesRuntime() { return 0; }
 updateAllCodex() { return 0; }
+updateLocalCargoCleanup() { return 0; }
 ''' + functions[-1] + '\nupdateAll\n'
                         result = subprocess.run(['/bin/zsh', '-f', '-c', script],
                             env={'HOME': tmp, 'PATH': str(bindir), 'ZSH': str(home/'absent'), 'HERDR_ENV': 'nested-test'},

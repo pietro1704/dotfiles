@@ -272,6 +272,10 @@ updateAll() {
     else
       print '· Compilações e liberação de pins desabilitadas'
     fi
+    updateLocalCargoCleanup --dry-run
+    dry_rc=$?
+    (( dry_rc == 130 )) && return 130
+    (( dry_rc )) && dry_failed=1
     updatePackagesAudit --dry-run
     dry_rc=$?
     (( dry_rc == 130 )) && return 130
@@ -381,6 +385,11 @@ updateAll() {
       fi
     fi
   fi
+
+  updateLocalCargoCleanup
+  local cleanup_rc=$?
+  (( cleanup_rc == 130 )) && return 130
+  (( cleanup_rc )) && failed=1
 
   updateAllCodex --verify
   codex_rc=$?
