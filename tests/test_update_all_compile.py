@@ -14,7 +14,8 @@ CLEAR_SCREEN = '\x1b[H\x1b[J'
 
 class CompileConsent(unittest.TestCase):
     def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0,
-                   metadata_failed=0, term='xterm-256color', runtime_rc=0, preview_rc=0):
+                   metadata_failed=0, term='xterm-256color', runtime_rc=0, preview_rc=0,
+                   macports_only_failed=0, macports_audit_rc=0, late_brew_rc=0):
         function = re.findall(r'^updateAll\(\) \{\n.*?^\}', (ROOT/'dot_zshrc.tmpl').read_text(), re.M|re.S)[-1]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)/'bin'
@@ -26,11 +27,26 @@ class CompileConsent(unittest.TestCase):
                 path.chmod(0o755)
             (bindir/'tput').symlink_to('/usr/bin/tput')
             script = f'''
+source "{ROOT / 'dot_local/lib/package-updates/binary-updates.zsh'}"
 updatePackagesPreview() {{ print PREVIEW; return {preview_rc}; }}
 updateRubyFromSource() {{ return 0; }}
-updatePackagesAudit() {{ print audit-$*; return {audit_rc}; }}
-updatePackagesBinaryOnly() {{ print binary-$*; UPDATE_PACKAGES_METADATA_FAILED={metadata_failed}; return {binary_rc}; }}
-updatePackagesFromSource() {{ print SOURCE-$*; return {source_rc}; }}
+updatePackagesAudit() {{
+    print audit-$*
+    [[ $1 != --macports-only ]] || return {macports_audit_rc}
+    return {audit_rc}
+}}
+updatePackagesBinaryOnly() {{
+    print binary-$*
+    UPDATE_PACKAGES_METADATA_FAILED={metadata_failed}
+    UPDATE_PACKAGES_MACPORTS_ONLY_FAILED={macports_only_failed}
+    return {binary_rc}
+}}
+updatePackagesBrewSourcePlan() {{ print '[{{"name":"llvm","pinned":false}}]'; }}
+updatePackagesFromSource() {{
+    print SOURCE-$*
+    [[ $1 != --late-brew ]] || return {late_brew_rc}
+    return {source_rc}
+}}
 updateAllCodex() {{ print Codex-$*; }}
 updatePackagesRuntime() {{
     if [[ $1 == snapshot ]]; then print snapshot-token; return 0; fi
@@ -123,10 +139,53 @@ updatePackagesRuntime() {{
         self.assertEqual(rc, 1, output)
         self.assertNotIn('Falha binária recuperada', output)
 
+    def test_macports_recovery_is_reported_even_with_unrelated_audit_pending(self):
+        rc, output = self.run_update('--allow-compile', binary_rc=1, audit_rc=1,
+                                     macports_only_failed=1)
+        self.assertEqual(rc, 1, output)
+        self.assertIn('audit---macports-only', output)
+        self.assertIn('Falha binária do MacPorts recuperada', output)
+
+    def test_macports_only_recheck_failure_and_cancellation(self):
+        for macports_audit_rc in (1, 130):
+            with self.subTest(macports_audit_rc=macports_audit_rc):
+                rc, output = self.run_update('--allow-compile', binary_rc=1, audit_rc=1,
+                                             macports_only_failed=1, macports_audit_rc=macports_audit_rc)
+                self.assertEqual(rc, macports_audit_rc, output)
+                self.assertIn('audit---macports-only', output)
+                self.assertNotIn('Falha binária do MacPorts recuperada', output)
+
+    def test_unrelated_source_failure_is_retained_after_macports_recovers(self):
+        rc, output = self.run_update('--allow-compile', binary_rc=1, source_rc=1, audit_rc=1,
+                                     macports_only_failed=1)
+        self.assertEqual(rc, 1, output)
+        self.assertIn('Falha binária do MacPorts recuperada', output)
+
+    def test_unconfirmed_binary_or_stale_metadata_skips_macports_only_recheck(self):
+        for macports_only_failed, metadata_failed in ((0, 0), (1, 1)):
+            with self.subTest(macports_only_failed=macports_only_failed, metadata_failed=metadata_failed):
+                rc, output = self.run_update('--allow-compile', binary_rc=1, audit_rc=1,
+                                             macports_only_failed=macports_only_failed, metadata_failed=metadata_failed)
+                self.assertEqual(rc, 1, output)
+                self.assertNotIn('audit---macports-only', output)
+                self.assertNotIn('Falha binária do MacPorts recuperada', output)
+
     def test_failed_source_sets_final_status_and_cancel_is_preserved(self):
         for source_rc in (1, 130):
             rc, output = self.run_update('--allow-compile', source_rc=source_rc)
             self.assertEqual(rc, source_rc, output)
+
+    def test_new_brew_plan_is_applied_at_most_once_before_validation(self):
+        for late_rc in (0, 1, 130):
+            with self.subTest(late_rc=late_rc):
+                rc, output = self.run_update('--allow-compile', late_brew_rc=late_rc)
+                self.assertEqual(rc, late_rc, output)
+                self.assertEqual(output.count('SOURCE---late-brew '), 1, output)
+                self.assertIn('SOURCE---planned-brew [{"name":"llvm","pinned":false}]', output)
+                if late_rc == 130:
+                    self.assertNotIn('Codex---verify', output)
+                else:
+                    self.assertLess(output.index('SOURCE---late-brew'), output.index('RUNTIME'))
 
     def test_unknown_flag_does_not_run_updates(self):
         rc, output = self.run_update('--bad')

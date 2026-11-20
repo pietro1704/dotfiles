@@ -12,6 +12,21 @@ def read(args):
     return result.stdout
 
 
+def audit_macports():
+    try:
+        lines = read(["port", "-q", "outdated"]).splitlines()
+    except (OSError, subprocess.CalledProcessError) as error:
+        if isinstance(error, subprocess.CalledProcessError) and error.returncode in (130, -2):
+            raise KeyboardInterrupt from error
+        print(f"Não foi possível conferir MacPorts: {error}", flush=True)
+        return None
+    outdated = [line for line in lines if "<" in line.split()]
+    print(f"MacPorts: {len(outdated)} pacotes pendentes", flush=True)
+    for line in outdated:
+        print("  " + line, flush=True)
+    return len(outdated)
+
+
 def audit(dry_run=False):
     pending = 0
     errors = []
@@ -37,18 +52,11 @@ def audit(dry_run=False):
         errors.append("Brew")
         print(f"Não foi possível conferir Brew: {error}", flush=True)
     if shutil.which("port"):
-        try:
-            lines = read(["port", "-q", "outdated"]).splitlines()
-            outdated = [line for line in lines if "<" in line.split()]
-            pending += len(outdated)
-            print(f"MacPorts: {len(outdated)} pacotes pendentes", flush=True)
-            for line in outdated:
-                print("  " + line, flush=True)
-        except (OSError, subprocess.CalledProcessError) as error:
-            if isinstance(error, subprocess.CalledProcessError) and error.returncode in (130, -2):
-                raise KeyboardInterrupt from error
+        macports_pending = audit_macports()
+        if macports_pending is None:
             errors.append("MacPorts")
-            print(f"Não foi possível conferir MacPorts: {error}", flush=True)
+        else:
+            pending += macports_pending
     # The generated local formula has no remote, so Brew cannot discover new AI releases alone.
     try:
         import importlib.util
@@ -85,9 +93,11 @@ def audit(dry_run=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true")
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--dry-run", action="store_true")
+    scope.add_argument("--macports-only", action="store_true")
     args = parser.parse_args()
     try:
-        raise SystemExit(audit(args.dry_run))
+        raise SystemExit(int(audit_macports() != 0) if args.macports_only else audit(args.dry_run))
     except KeyboardInterrupt:
         raise SystemExit(130)

@@ -118,34 +118,44 @@ def preview():
     return int(failed)
 
 
-def main(dry_run=False):
+def main(dry_run=False, *, planned_brew=None, late_brew=None):
     base = Path(__file__).resolve().parent
     os.environ.update(HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_NO_INSTALL_CLEANUP="1",
                       HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK="1", HOMEBREW_MAKE_JOBS="2")
     queue, failed, pinned = [], [], []
     try:
-        names = json.loads(execute(["brew", "ruby", str(base / "homebrew-source-plan.rb")], capture=True))
+        attempted = {item["name"] for item in json.loads(late_brew)} if late_brew is not None else set()
+        if planned_brew is None:
+            planned_brew = execute(["brew", "ruby", str(base / "homebrew-source-plan.rb")], capture=True)
+        names = json.loads(planned_brew)
         for item in names:
             name = item["name"]
-            if item["pinned"]:
-                pinned.append(name)
+            if name in attempted:
+                continue
             if not re.fullmatch(r"[A-Za-z0-9_@.+/-]+", name):
                 raise RuntimeError("Invalid Brew formula name")
+            if item["pinned"]:
+                pinned.append(name)
             queue.append((f"brew:{name}", ["brew", "upgrade", "--formula", name]))
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.CalledProcessError) as error:
         failed.append("Brew source inventory")
         print(f"Source inventory failed: {error}; continuing", flush=True)
-    try:
-        for name in outdated_ports():
-            queue.append((f"port:{name}", ["sudo", "port", "-N", "-s", "upgrade", name, "buildmakejobs=2"]))
-    except (OSError, subprocess.CalledProcessError) as error:
-        failed.append("MacPorts source inventory")
-        print(f"Source inventory failed: {error}; continuing", flush=True)
-    # ai-jail is also independent from failures of either package manager.
-    ai = ["python3", str(base / "ai-tools-brew.py"), "--allow-compile", "--source-only"]
-    if dry_run:
-        ai.append("--dry-run")
-    queue.append(("ai-jail stable Intel fallback", ai))
+    if late_brew is None:
+        try:
+            for name in outdated_ports():
+                queue.append((f"port:{name}", ["sudo", "port", "-N", "-s", "upgrade", name, "buildmakejobs=2"]))
+        except (OSError, subprocess.CalledProcessError) as error:
+            failed.append("MacPorts source inventory")
+            print(f"Source inventory failed: {error}; continuing", flush=True)
+        # ai-jail is also independent from failures of either package manager.
+        ai = ["python3", str(base / "ai-tools-brew.py"), "--allow-compile", "--source-only"]
+        if dry_run:
+            ai.append("--dry-run")
+        queue.append(("ai-jail stable Intel fallback", ai))
+    elif queue:
+        print("→ Novas pendências do Homebrew antes da auditoria", flush=True)
+    elif not failed:
+        return 0
     # Release the whole dependency queue before builds, avoiding failures caused by pinned dependencies.
     pin_failures = release_pins(pinned, dry_run)
     failed.extend("pin:" + name for name in pin_failures)
@@ -163,9 +173,15 @@ if __name__ == "__main__":
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--allow-compile", action="store_true")
     mode.add_argument("--preview", action="store_true")
+    brew_plan = parser.add_mutually_exclusive_group()
+    brew_plan.add_argument("--planned-brew", metavar="JSON")
+    brew_plan.add_argument("--late-brew", metavar="PREVIOUS_PLAN_JSON")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+    if not args.allow_compile and (args.planned_brew is not None or args.late_brew is not None):
+        parser.error("--planned-brew and --late-brew require --allow-compile")
     try:
-        raise SystemExit(preview() if args.preview else main(args.dry_run))
+        raise SystemExit(preview() if args.preview else main(
+            args.dry_run, planned_brew=args.planned_brew, late_brew=args.late_brew))
     except KeyboardInterrupt:
         raise SystemExit(130)
