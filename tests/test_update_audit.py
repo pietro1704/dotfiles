@@ -1,7 +1,10 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -58,3 +61,19 @@ class CompletionAudit(unittest.TestCase):
     def test_newer_installed_version_is_not_a_pending_downgrade(self):
         item = {'name':'openssl@3', 'installed_versions':['3.6.5'], 'current_version':'3.5.9', 'pinned':False}
         self.assertEqual(self.run_audit([item], newer=['openssl@3']), 0)
+
+    def test_macports_only_status_without_other_package_managers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            port = Path(tmp) / 'port'
+            for output, port_rc, audit_rc in (('No installed ports are outdated.', 0, 0),
+                                              ('aom @3.15.1_0 < 3.15.3_0', 0, 1),
+                                              ('', 1, 1), ('', 130, 130)):
+                with self.subTest(output=output, port_rc=port_rc):
+                    port.write_text(f"#!/bin/sh\n[ \"$*\" = '-q outdated' ] || exit 2\n"
+                                    f"printf '%s\\n' '{output}'\nexit {port_rc}\n")
+                    port.chmod(0o755)
+                    result = subprocess.run([sys.executable, audit.__file__, '--macports-only'],
+                                            env=dict(os.environ, PATH=tmp), text=True,
+                                            capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, audit_rc, result.stdout + result.stderr)
+                    self.assertNotIn('Brew', result.stdout)

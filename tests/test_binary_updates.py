@@ -64,10 +64,16 @@ class BinaryUpdates(unittest.TestCase):
                 self.assertNotIn('mode=cask-apply', log)
 
     def test_macports_binary_upgrade_failure_names_phase_and_exit_code(self):
-        result, _ = self.run_update('updatePackagesBinaryOnly', 1,
-                                    'port -N -b upgrade outdated')
+        command = ('updatePackagesBinaryOnly; rc=$?; '
+                   'print macports_only=$UPDATE_PACKAGES_MACPORTS_ONLY_FAILED; return $rc')
+        result, _ = self.run_update(command, 1, 'port -N -b upgrade outdated')
         self.assertEqual(result.returncode, 1)
         self.assertIn('MacPorts upgrade binário falhou (código 1)', result.stderr)
+        self.assertIn('macports_only=1', result.stdout)
+
+        result, _ = self.run_update(command, 1, 'port -N -b upgrade outdated', fail_mode='apply')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('macports_only=0', result.stdout)
 
     def test_macports_sync_failure_names_phase_and_skips_upgrade(self):
         result, log = self.run_update('updatePackagesBinaryOnly; rc=$?; print metadata=$UPDATE_PACKAGES_METADATA_FAILED; return $rc', 1, 'port -N sync')

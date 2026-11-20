@@ -285,21 +285,20 @@ updateAll() {
   export HOMEBREW_NO_INSTALL_UPGRADE=1
   export NONINTERACTIVE=1
 
-  local failed=$(( preview_rc != 0 )) binary_failed=0 metadata_failed=0 binary_rc
+  local failed=$(( preview_rc != 0 )) binary_failed=0 binary_rc
   local runtime_snapshot runtime_rc
   runtime_snapshot=$(updatePackagesRuntime snapshot)
   runtime_rc=$?
   (( runtime_rc == 130 )) && return 130
   (( runtime_rc )) && failed=1
 
-  UPDATE_PACKAGES_METADATA_FAILED=0
+  local UPDATE_PACKAGES_METADATA_FAILED=0 UPDATE_PACKAGES_MACPORTS_ONLY_FAILED=0
   updatePackagesBinaryOnly
   binary_rc=$?
   (( binary_rc == 130 )) && return 130
   if (( binary_rc )); then
     if (( allow_compile )); then
       binary_failed=1
-      metadata_failed=${UPDATE_PACKAGES_METADATA_FAILED:-0}
       print "· Etapa binária terminou com código $binary_rc; a fila de compilação e a auditoria final vão revalidar os pacotes"
     else
       failed=1
@@ -355,8 +354,14 @@ updateAll() {
   # Compilations are last, after every ordinary updater, and remain opt-in.
   if (( allow_compile )); then
     echo '→ Etapa final: atualizações que podem compilar...'
-    updatePackagesFromSource
-    local compile_rc=$?
+    local brew_source_plan plan_rc compile_rc
+    local -a brew_plan_args=()
+    brew_source_plan=$(updatePackagesBrewSourcePlan)
+    plan_rc=$?
+    (( plan_rc == 130 )) && return 130
+    (( plan_rc )) || brew_plan_args=(--planned-brew "$brew_source_plan")
+    updatePackagesFromSource "${brew_plan_args[@]}"
+    compile_rc=$?
     (( compile_rc == 130 )) && return 130
     (( compile_rc )) && failed=1
     updateRubyFromSource
@@ -365,6 +370,15 @@ updateAll() {
     if (( ruby_rc )); then
       failed=1
       compile_rc=1
+    fi
+    if (( plan_rc == 0 )); then
+      updatePackagesFromSource --late-brew "$brew_source_plan"
+      local late_rc=$?
+      (( late_rc == 130 )) && return 130
+      if (( late_rc )); then
+        failed=1
+        compile_rc=1
+      fi
     fi
   fi
 
@@ -387,11 +401,10 @@ updateAll() {
   (( audit_rc )) && failed=1
 
   if (( binary_failed )); then
-    if (( compile_rc == 0 && audit_rc == 0 && metadata_failed == 0 )); then
-      print '✓ Falha binária recuperada; fila de compilação e auditoria final confirmaram os pacotes'
-    else
-      failed=1
-    fi
+    updatePackagesVerifyBinaryRecovery "$compile_rc" "$audit_rc"
+    local recovery_rc=$?
+    (( recovery_rc == 130 )) && return 130
+    (( recovery_rc )) && failed=1
   fi
 
   if (( failed )); then

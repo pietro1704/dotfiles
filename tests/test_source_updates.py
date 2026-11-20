@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import unittest
@@ -68,6 +69,21 @@ class SourceUpdates(unittest.TestCase):
             self.assertEqual(source.main(), 0)
             commands = [c.args[0] for c in runner.call_args_list]
             self.assertIn(['sudo', 'port', '-N', '-s', 'upgrade', 'libvpx', 'buildmakejobs=2'], commands)
+
+    def test_late_brew_pass_attempts_only_new_formulae(self):
+        original = json.dumps([{"name": "llvm", "pinned": False}])
+        current = json.dumps([{"name": "llvm", "pinned": False}, {"name": "gnutls", "pinned": False}])
+        with patch.object(source, 'execute', side_effect=[current, None]) as execute, \
+                patch.object(source.shutil, 'disk_usage', return_value=type('Disk', (), {'free': 20*1024**3})()):
+            self.assertEqual(source.main(late_brew=original), 0)
+        self.assertEqual(execute.call_count, 2)
+        self.assertEqual(execute.call_args.args[0], ['brew', 'upgrade', '--formula', 'gnutls'])
+
+    def test_late_brew_pass_has_no_writes_if_original_target_is_still_pending(self):
+        original = json.dumps([{"name": "llvm", "pinned": True}])
+        with patch.object(source, 'execute', return_value=original) as execute:
+            self.assertEqual(source.main(late_brew=original), 0)
+        execute.assert_called_once()
 
     def test_preview_only_lists_ports_missing_an_archive_or_signature(self):
         rows = 'aom\t3.15.3\taom-intel.tbz2\nzlib\t1.4\tzlib-intel.tbz2\n'

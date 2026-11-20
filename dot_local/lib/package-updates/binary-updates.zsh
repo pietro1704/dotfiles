@@ -51,6 +51,23 @@ updatePackagesAudit() {
   command python3 "$HOME/.local/lib/package-updates/audit-updates.py" "$@"
 }
 
+updatePackagesVerifyBinaryRecovery() {
+  local compile_rc=$1 audit_rc=$2
+  (( UPDATE_PACKAGES_METADATA_FAILED == 0 )) || return 1
+  if (( compile_rc == 0 && audit_rc == 0 )); then
+    print '✓ Falha binária recuperada; fila de compilação e auditoria final confirmaram os pacotes'
+    return 0
+  fi
+  (( UPDATE_PACKAGES_MACPORTS_ONLY_FAILED )) || return 1
+  updatePackagesAudit --macports-only || return $?
+  print '✓ Falha binária do MacPorts recuperada; nenhum port ficou pendente'
+}
+
+# Capture the exact Brew targets that may be attempted before the final audit.
+updatePackagesBrewSourcePlan() {
+  HOMEBREW_NO_AUTO_UPDATE=1 command brew ruby "$HOME/.local/lib/package-updates/homebrew-source-plan.rb"
+}
+
 # Called only as the last updateAll phase after explicit consent.
 updatePackagesFromSource() {
   command python3 "$HOME/.local/lib/package-updates/source-updates.py" --allow-compile "$@"
@@ -121,8 +138,9 @@ updateBrewBinaryOnly() {
 }
 
 updatePackagesBinaryOnly() {
-  local failed=0 mode=apply rc macports_log_dir macports_log
+  local failed=0 mode=apply rc macports_log_dir macports_log macports_upgrade_failed=0
   UPDATE_PACKAGES_METADATA_FAILED=0
+  UPDATE_PACKAGES_MACPORTS_ONLY_FAILED=0
   if [[ ${1:-} == --dry-run && $# == 1 ]]; then
     mode=dry-run
   elif (( $# )); then
@@ -162,6 +180,7 @@ updatePackagesBinaryOnly() {
       if (( rc )); then
         print -u2 "✗ MacPorts upgrade binário falhou (código $rc); saída: $macports_log"
         failed=1
+        macports_upgrade_failed=1
       fi
     fi
   fi
@@ -170,6 +189,10 @@ updatePackagesBinaryOnly() {
   updateBrewBinaryOnly "$@"
   rc=$?
   (( rc == 130 )) && return "$rc"
-  (( rc )) && failed=1
+  if (( rc )); then
+    failed=1
+  elif (( macports_upgrade_failed )); then
+    UPDATE_PACKAGES_MACPORTS_ONLY_FAILED=1
+  fi
   return "$failed"
 }
