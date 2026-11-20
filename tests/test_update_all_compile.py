@@ -15,7 +15,7 @@ CLEAR_SCREEN = '\x1b[H\x1b[J'
 class CompileConsent(unittest.TestCase):
     def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0,
                    metadata_failed=0, term='xterm-256color', runtime_rc=0, preview_rc=0,
-                   macports_only_failed=0, macports_audit_rc=0, late_brew_rc=0):
+                   macports_only_failed=0, macports_audit_rc=0, late_brew_rc=0, cleanup_rc=0):
         function = re.findall(r'^updateAll\(\) \{\n.*?^\}', (ROOT/'dot_zshrc.tmpl').read_text(), re.M|re.S)[-1]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)/'bin'
@@ -48,6 +48,7 @@ updatePackagesFromSource() {{
     return {source_rc}
 }}
 updateAllCodex() {{ print Codex-$*; }}
+updateLocalCargoCleanup() {{ print Cargo-$*; return {cleanup_rc}; }}
 updatePackagesRuntime() {{
     if [[ $1 == snapshot ]]; then print snapshot-token; return 0; fi
     read -r baseline
@@ -191,6 +192,19 @@ updatePackagesRuntime() {{
         rc, output = self.run_update('--bad')
         self.assertEqual(rc, 2, output)
         self.assertNotIn('binary', output)
+
+    def test_cargo_cleanup_is_planned_in_dry_run_and_applied_before_audit(self):
+        for args, marker in (('--dry-run', 'Cargo---dry-run'), ('', 'Cargo-\n')):
+            with self.subTest(args=args):
+                rc, output = self.run_update(args)
+                self.assertEqual(rc, 0, output)
+                self.assertLess(output.index(marker), output.index('audit-'))
+
+    def test_cargo_cleanup_failure_and_cancellation(self):
+        for cleanup_rc in (1, 130):
+            rc, output = self.run_update(cleanup_rc=cleanup_rc)
+            self.assertEqual(rc, cleanup_rc, output)
+            self.assertEqual('audit-' in output, cleanup_rc == 1)
 
     def test_bad_executable_prevents_success_even_if_inventory_is_current(self):
         for runtime_rc in (1, 130):

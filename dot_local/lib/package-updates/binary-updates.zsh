@@ -5,6 +5,48 @@ updatePackagesRuntime() {
   command python3 "$HOME/.local/lib/package-updates/runtime-updates.py" "$@"
 }
 
+# Only Cargo caches in the two explicitly selected local checkouts.
+updateLocalCargoCleanup() {
+  local repo target root tracked open_files rc failed=0
+  local -a options=(--offline)
+  [[ ${1:-} == --dry-run ]] && options+=(--dry-run)
+  for repo in "${HOME:A}/ai-memory" "${HOME:A}/Developer/ai-jail-pasteboard"; do
+    target="$repo/target"
+    [[ -e $target || -L $target ]] || continue
+    if [[ ${target:A} != "$target" || ! -O $target || ! -d $target ||
+          ! -f $target/CACHEDIR.TAG || -L $target/CACHEDIR.TAG ]] ||
+       ! command grep -Fxq 'Signature: 8a477f597d28d172789f06886806bc55' "$target/CACHEDIR.TAG"; then
+      print -r -- "· Limpeza Cargo: cache não reconhecido, pulando $target"
+      continue
+    fi
+    root=$(command git -C "$repo" rev-parse --show-toplevel 2>/dev/null) &&
+      tracked=$(command git -C "$repo" ls-files -- target) &&
+      [[ $root == "$repo" && -z $tracked ]] &&
+      command git -C "$repo" check-ignore -q -- target/ || {
+        print -r -- "· Limpeza Cargo: destino não confirmado pelo Git, pulando $target"
+        continue
+      }
+    # lsof returns 1 with no output when no process has a file open.
+    open_files=$(command lsof -nP +D "$target" 2>&1)
+    rc=$?
+    (( rc == 130 )) && return 130
+    if (( rc != 1 )) || [[ -n $open_files ]]; then
+      print -r -- "· Limpeza Cargo: cache em uso ou inspeção indisponível, pulando $target"
+      continue
+    fi
+    print -r -- "→ Limpeza Cargo: $target"
+    (
+      cd -- "$repo" || exit 1
+      MISE_AUTO_INSTALL=0 MISE_NOT_FOUND_AUTO_INSTALL=0 MISE_IGNORED_TOOLS=android-sdk,flutter,java \
+        command cargo clean "${options[@]}" --target-dir "$target"
+    )
+    rc=$?
+    (( rc == 130 )) && return 130
+    (( rc )) && failed=1
+  done
+  return "$failed"
+}
+
 updateMiseBinaryOnly() {
   local -x MISE_ALL_COMPILE=0 MISE_NODE_COMPILE=0 MISE_PYTHON_COMPILE=0 MISE_RUBY_COMPILE=0
   local -a exclusions=(--exclude npm:@openai/codex)
