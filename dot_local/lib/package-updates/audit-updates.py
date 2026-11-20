@@ -18,7 +18,7 @@ def audit(dry_run=False):
     try:
         data = json.loads(read(["brew", "outdated", "--json=v2"]))
         newer = set(json.loads(read(["brew", "ruby", str(Path(__file__).with_name("newer-versions.rb"))])))
-        formulas = [item for item in data["formulae"] if item["name"] not in newer]
+        formulas = [item for item in data["formulae"] if item["name"] not in newer | {"herdr"}]
         for item in data["formulae"]:
             if item["name"] in newer:
                 print(f"{item['name']}: versão instalada mais nova que o catálogo; preservada sem downgrade", flush=True)

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Final, explicitly opted-in source queue. Each application fails independently."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shutil
 import subprocess
 
@@ -48,6 +50,74 @@ def release_pins(names, dry_run=False):
     return failed
 
 
+def outdated_ports():
+    if not shutil.which("port"):
+        return []
+    lines = execute(["port", "-q", "outdated"], capture=True).splitlines()
+    return [line.split()[0] for line in lines
+            if "<" in line.split() and re.fullmatch(r"[A-Za-z0-9_.+-]+", line.split()[0])]
+
+
+def preview_ports(base):
+    names = outdated_ports()
+    if not names:
+        return
+    probe = base / "macports-binary-probe.tcl"
+    rows = execute(["/opt/local/libexec/macports/bin/tclsh8.6", str(probe), *names], capture=True)
+    archives = {}
+    for row in rows.splitlines():
+        cols = row.split("\t")
+        if len(cols) == 3 and cols[0] in names and re.fullmatch(r"[A-Za-z0-9_.+-]+", cols[2]):
+            archives[cols[0]] = cols[1:]
+    available = runpy.run_path(str(base / "macports-binary-fallback.py"))["binary_available"]
+
+    def check(name):
+        if name not in archives:
+            return f"  MacPorts {name} (arquivo binário não identificado)"
+        version, archive = archives[name]
+        if not available(f"https://packages.macports.org/{name}/{archive}"):
+            return f"  MacPorts {name} → {version} (arquivo oficial ou assinatura indisponível)"
+        return None
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for message in pool.map(check, names):
+            if message:
+                print(message, flush=True)
+
+
+def preview():
+    base = Path(__file__).resolve().parent
+    print("→ Atualizações que podem exigir compilação (catálogos locais)", flush=True)
+    print("  Para permitir compilações e liberação de pins: updateAll --allow-compile", flush=True)
+    failed = False
+    try:
+        os.environ.update(HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_BINARY_UPDATE_MODE="source-preview")
+        execute(["brew", "ruby", str(base / "homebrew-binary-upgrade.rb")])
+    except (OSError, subprocess.CalledProcessError) as error:
+        print(f"  Brew: não foi possível conferir a fila: {error}", flush=True)
+        failed = True
+    try:
+        preview_ports(base)
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        if isinstance(error, subprocess.CalledProcessError) and error.returncode in (130, -2):
+            raise KeyboardInterrupt from error
+        print(f"  MacPorts: não foi possível conferir os arquivos: {error}", flush=True)
+        failed = True
+    try:
+        latest = runpy.run_path(str(base / "ai-tools-brew.py"))["latest"]
+        version, assets = latest("ai-jail")
+        current = shutil.which("ai-jail")
+        if "ai-jail-macos-x86_64.tar.gz" not in assets and os.uname().machine == "x86_64":
+            if not current or execute([current, "--version"], capture=True).strip() != f"ai-jail {version}":
+                print(f"  ai-jail → {version} (sem arquivo oficial para Mac Intel)", flush=True)
+    except (OSError, ValueError, KeyError, RuntimeError, subprocess.CalledProcessError) as error:
+        if isinstance(error, subprocess.CalledProcessError) and error.returncode in (130, -2):
+            raise KeyboardInterrupt from error
+        print(f"  ai-jail: não foi possível conferir a atualização: {error}", flush=True)
+        failed = True
+    return int(failed)
+
+
 def main(dry_run=False):
     base = Path(__file__).resolve().parent
     os.environ.update(HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_NO_INSTALL_CLEANUP="1",
@@ -65,17 +135,12 @@ def main(dry_run=False):
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.CalledProcessError) as error:
         failed.append("Brew source inventory")
         print(f"Source inventory failed: {error}; continuing", flush=True)
-    if shutil.which("port"):
-        try:
-            outdated = execute(["port", "-q", "outdated"], capture=True)
-            for line in outdated.splitlines():
-                columns = line.split()
-                if columns and re.fullmatch(r"[A-Za-z0-9_.+-]+", columns[0]) and "<" in columns:
-                    name = columns[0]
-                    queue.append((f"port:{name}", ["sudo", "port", "-N", "-s", "upgrade", name, "buildmakejobs=2"]))
-        except (OSError, subprocess.CalledProcessError) as error:
-            failed.append("MacPorts source inventory")
-            print(f"Source inventory failed: {error}; continuing", flush=True)
+    try:
+        for name in outdated_ports():
+            queue.append((f"port:{name}", ["sudo", "port", "-N", "-s", "upgrade", name, "buildmakejobs=2"]))
+    except (OSError, subprocess.CalledProcessError) as error:
+        failed.append("MacPorts source inventory")
+        print(f"Source inventory failed: {error}; continuing", flush=True)
     # ai-jail is also independent from failures of either package manager.
     ai = ["python3", str(base / "ai-tools-brew.py"), "--allow-compile", "--source-only"]
     if dry_run:
@@ -95,10 +160,12 @@ def main(dry_run=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--allow-compile", action="store_true", required=True)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--allow-compile", action="store_true")
+    mode.add_argument("--preview", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     try:
-        raise SystemExit(main(args.dry_run))
+        raise SystemExit(preview() if args.preview else main(args.dry_run))
     except KeyboardInterrupt:
         raise SystemExit(130)

@@ -229,6 +229,16 @@ updateAll() {
   if [[ -t 0 && -t 1 && -n ${TERM:-} && $TERM != dumb ]]; then
     command tput -S 2>/dev/null <<<$'home\ned' || true
   fi
+  local preview_rc=0
+  if (( !allow_compile )); then
+    updatePackagesPreview
+    preview_rc=$?
+    (( preview_rc == 130 )) && return 130
+    updateRubyFromSource --dry-run
+    local ruby_preview_rc=$?
+    (( ruby_preview_rc == 130 )) && return 130
+    (( ruby_preview_rc )) && preview_rc=$ruby_preview_rc
+  fi
   if (( !allow_compile && !dry_run )) && [[ -t 0 && -t 1 ]]; then
     read -r 'answer?Permitir compilações no final? [s/N] '
     case $answer in
@@ -236,16 +246,26 @@ updateAll() {
     esac
   fi
   if (( dry_run )); then
-    local dry_failed=0 dry_rc
+    local dry_failed=$(( preview_rc != 0 )) dry_rc
     print '→ Dry run: nenhum instalador, compilação ou remoção de pin será executado'
     updatePackagesBinaryOnly --dry-run
     dry_rc=$?
     (( dry_rc == 130 )) && return 130
     (( dry_rc )) && dry_failed=1
+    if command -v mise >/dev/null 2>&1; then
+      updateMiseBinaryOnly --dry-run
+      dry_rc=$?
+      (( dry_rc == 130 )) && return 130
+      (( dry_rc )) && dry_failed=1
+    fi
     print '→ Planejado: oh-my-zsh, Codex, Mole, Claude Code e plugins tmux (quando instalados)'
     print '· Herdr e Hermes continuam com atualização manual'
     if (( allow_compile )); then
       updatePackagesFromSource --dry-run
+      dry_rc=$?
+      (( dry_rc == 130 )) && return 130
+      (( dry_rc )) && dry_failed=1
+      updateRubyFromSource --dry-run
       dry_rc=$?
       (( dry_rc == 130 )) && return 130
       (( dry_rc )) && dry_failed=1
@@ -265,7 +285,13 @@ updateAll() {
   export HOMEBREW_NO_INSTALL_UPGRADE=1
   export NONINTERACTIVE=1
 
-  local failed=0 binary_failed=0 metadata_failed=0 binary_rc
+  local failed=$(( preview_rc != 0 )) binary_failed=0 metadata_failed=0 binary_rc
+  local runtime_snapshot runtime_rc
+  runtime_snapshot=$(updatePackagesRuntime snapshot)
+  runtime_rc=$?
+  (( runtime_rc == 130 )) && return 130
+  (( runtime_rc )) && failed=1
+
   UPDATE_PACKAGES_METADATA_FAILED=0
   updatePackagesBinaryOnly
   binary_rc=$?
@@ -301,18 +327,30 @@ updateAll() {
 
   if command -v tmux >/dev/null 2>&1 && [[ -x "$HOME/.tmux/plugins/tpm/bin/install_plugins" ]]; then
     echo '→ Atualizando plugins do tmux...'
-    tmux start-server
-    "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null || echo '· tmux plugins: install falhou (ignorado)'
+    tmux start-server || failed=1
+    "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null || failed=1
     if [[ -d "$HOME/.tmux/plugins/tpm/.git" ]]; then
-      git -C "$HOME/.tmux/plugins/tpm" pull --ff-only || true
+      git -C "$HOME/.tmux/plugins/tpm" pull --ff-only || failed=1
     fi
     local plugin_dir
-    for plugin_dir in "$HOME"/.tmux/plugins/*; do
+    for plugin_dir in "$HOME"/.tmux/plugins/*(N); do
       [[ -d "$plugin_dir/.git" ]] || continue
-      git -C "$plugin_dir" pull --ff-only || true
+      [[ $plugin_dir == "$HOME/.tmux/plugins/tpm" ]] && continue
+      git -C "$plugin_dir" pull --ff-only || failed=1
     done
-    tmux run-shell "$HOME/.tmux/plugins/tpm/scripts/clean_plugins.sh" >/dev/null 2>&1 || true
+    tmux run-shell "$HOME/.tmux/plugins/tpm/scripts/clean_plugins.sh" >/dev/null || failed=1
   fi
+
+  if command -v mise >/dev/null 2>&1; then
+    updateMiseBinaryOnly
+    local mise_rc=$?
+    (( mise_rc == 130 )) && return 130
+    (( mise_rc )) && failed=1
+  fi
+  updateAllCodex
+  local codex_rc=$?
+  (( codex_rc == 130 )) && return 130
+  (( codex_rc )) && failed=1
 
   # Compilations are last, after every ordinary updater, and remain opt-in.
   if (( allow_compile )); then
@@ -321,6 +359,25 @@ updateAll() {
     local compile_rc=$?
     (( compile_rc == 130 )) && return 130
     (( compile_rc )) && failed=1
+    updateRubyFromSource
+    local ruby_rc=$?
+    (( ruby_rc == 130 )) && return 130
+    if (( ruby_rc )); then
+      failed=1
+      compile_rc=1
+    fi
+  fi
+
+  updateAllCodex --verify
+  codex_rc=$?
+  (( codex_rc == 130 )) && return 130
+  (( codex_rc )) && failed=1
+
+  if (( runtime_rc == 0 )); then
+    updatePackagesRuntime verify <<<"$runtime_snapshot"
+    runtime_rc=$?
+    (( runtime_rc == 130 )) && return 130
+    (( runtime_rc )) && failed=1
   fi
 
   # Never report completion while the final package inventory still has pending versions.

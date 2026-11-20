@@ -1,3 +1,51 @@
+# Shared Codex updater and verification of the executable selected in each context.
+source "${${(%):-%x}:A:h}/codex-updates.zsh"
+
+updatePackagesRuntime() {
+  command python3 "$HOME/.local/lib/package-updates/runtime-updates.py" "$@"
+}
+
+updateMiseBinaryOnly() {
+  local -x MISE_ALL_COMPILE=0 MISE_NODE_COMPILE=0 MISE_PYTHON_COMPILE=0 MISE_RUBY_COMPILE=0
+  local -a exclusions=(--exclude npm:@openai/codex)
+  [[ $(command uname -m) != x86_64 ]] || exclusions+=(--exclude ruby)
+  command mise -C "$HOME" upgrade --yes "${exclusions[@]}" "$@"
+}
+
+updateRubyFromSource() {
+  local cfg="$HOME/.config/mise/config.toml" cur latest tool actual free
+  [[ -r $cfg ]] && command -v mise >/dev/null 2>&1 || return 0
+  [[ $(command uname -m) == x86_64 ]] || return 0
+  cur=$(command sed -nE 's/^ruby = "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' "$cfg") || return $?
+  [[ -n $cur ]] || return 0
+  latest=$(MISE_RUBY_COMPILE=1 command mise -C "$HOME" ls-remote ruby "${cur%.*}") || return $?
+  latest=$(print -r -- "$latest" | command grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | command tail -1)
+  if [[ -z $latest ]]; then
+    print -u2 -- "Ruby: não foi possível listar versões da série ${cur%.*}"
+    return 1
+  fi
+  [[ $latest != "$cur" ]] || return 0
+  if [[ ${1:-} == --dry-run ]]; then
+    print -- "  mise Ruby $cur → $latest (compilação no Mac Intel)"
+    return 0
+  fi
+  free=$(command df -k "$HOME" | command awk 'NR==2 {print $4}')
+  if (( free < 8 * 1024 * 1024 )); then
+    print -u2 'Ruby: a compilação exige pelo menos 8 GiB livres'
+    return 1
+  fi
+  tool="ruby@$latest"
+  print -- "→ Compilando $tool via mise..."
+  MISE_RUBY_COMPILE=1 command mise -C "$HOME" install "$tool" || return $?
+  actual=$(MISE_AUTO_INSTALL=0 MISE_EXEC_AUTO_INSTALL=0 MISE_NOT_FOUND_AUTO_INSTALL=0 \
+    command mise -C "$HOME" exec "$tool" -- ruby -e 'puts RUBY_VERSION') || return $?
+  if [[ $actual != "$latest" ]]; then
+    print -u2 -- "Ruby: esperado $latest, recebido $actual; configuração preservada"
+    return 1
+  fi
+  command sed -i '' -E "s/^ruby = \"${cur//./[.]}\"/ruby = \"$latest\"/" "$cfg" || return $?
+  print -- "✓ Ruby $latest compilado e verificado"
+}
 # Final read-only inventory. Pending packages make updateAll incomplete.
 updatePackagesAudit() {
   command python3 "$HOME/.local/lib/package-updates/audit-updates.py" "$@"
@@ -6,6 +54,15 @@ updatePackagesAudit() {
 # Called only as the last updateAll phase after explicit consent.
 updatePackagesFromSource() {
   command python3 "$HOME/.local/lib/package-updates/source-updates.py" --allow-compile "$@"
+}
+
+_update_brew_binary_exclusions() {
+  print 'edencommon,fb303,fbthrift,fizz,folly,mvfst,wangle,llvm,llvm@22,watchman,xcodes,mise,herdr,ai-memory,ai-jail'
+}
+
+updatePackagesPreview() {
+  local -x HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE="$(_update_brew_binary_exclusions)"
+  command python3 "$HOME/.local/lib/package-updates/source-updates.py" --preview
 }
 
 # Stable AI archives; source builds require explicit opt-in.
@@ -20,8 +77,7 @@ updateBrewBinaryOnly() {
   local -x HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
   local -x HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_ENV_HINTS=1
   local -x HOMEBREW_NO_INSTALL_UPGRADE=1
-  local skip_formulae=(edencommon fb303 fbthrift fizz folly mvfst wangle llvm llvm@22 watchman xcodes mise herdr ai-memory ai-jail)
-  local -x HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE="${(j:,:)skip_formulae}"
+  local -x HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE="$(_update_brew_binary_exclusions)"
   if [[ ${1:-} == --dry-run && $# == 1 ]]; then
     mode=dry-run
   elif (( $# )); then
