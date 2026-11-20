@@ -226,6 +226,9 @@ updateAll() {
       *) print -u2 'Uso: updateAll [--dry-run] [--allow-compile]'; return 2 ;;
     esac
   done
+  if [[ -t 0 && -t 1 && -n ${TERM:-} && $TERM != dumb ]]; then
+    command tput -S 2>/dev/null <<<$'home\ned' || true
+  fi
   if (( !allow_compile && !dry_run )) && [[ -t 0 && -t 1 ]]; then
     read -r 'answer?Permitir compilações no final? [s/N] '
     case $answer in
