@@ -20,7 +20,11 @@ export HOME="$TEST_HOME" ZSH="$TEST_HOME/no-zsh"
 set +o pipefail
 updatePackagesBinaryOnly() { return "$PACKAGES_RC"; }
 updatePackagesAudit() { return 0; }
-updateCodex() { return 0; }
+updatePackagesPreview() { return 0; }
+updateRubyFromSource() { return 0; }
+updatePackagesRuntime() { return 0; }
+updateMiseBinaryOnly() { return 0; }
+updateAllCodex() { return 0; }
 brew() { return "$PACKAGES_RC"; }
 port() { return 0; }
 sudo() { return 0; }

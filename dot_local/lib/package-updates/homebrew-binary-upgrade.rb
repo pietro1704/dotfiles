@@ -58,7 +58,7 @@ module BinaryPackageUpdates
 
   def self.run
     mode = ENV.fetch("HOMEBREW_BINARY_UPDATE_MODE", "audit")
-    raise "Unknown binary update mode: #{mode}" unless %w[audit dry-run apply cask-dry-run cask-apply test].include?(mode)
+    raise "Unknown binary update mode: #{mode}" unless %w[audit source-preview dry-run apply cask-dry-run cask-apply test].include?(mode)
     return if mode == "test"
 
     if mode.start_with?("cask-")
@@ -72,9 +72,22 @@ module BinaryPackageUpdates
     end
 
     excluded = ENV.fetch("HOMEBREW_BINARY_UPDATE_SKIP_FORMULAE", "").split(",")
-    names = Formula.installed.select(&:outdated?).reject(&:pinned?).reject do |formula|
+    formulas = Formula.installed.select(&:outdated?).reject do |formula|
       formula.installed_kegs.any? { |keg| keg.version > formula.pkg_version }
-    end.map(&:full_name)
+    end
+    if mode == "source-preview"
+      formulas.each do |formula|
+        next if %w[ai-jail ai-memory herdr].include?(formula.name)
+
+        reasons = blockers(formula)
+        reasons = ["fora da etapa binária do Brew"] if reasons.empty? && excluded.include?(formula.name)
+        next if reasons.empty?
+
+        puts "  Brew #{formula.full_name} → #{formula.pkg_version} (#{reasons.join('; ')})"
+      end
+      return
+    end
+    names = formulas.reject(&:pinned?).map(&:full_name)
     names.reject! { |name| excluded.include?(name.split("/").last) }
     if mode == "audit"
       names.each do |name|

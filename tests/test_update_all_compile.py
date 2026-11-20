@@ -13,7 +13,8 @@ CLEAR_SCREEN = '\x1b[H\x1b[J'
 
 
 class CompileConsent(unittest.TestCase):
-    def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0, metadata_failed=0, term='xterm-256color'):
+    def run_update(self, args='', reply=None, source_rc=0, binary_rc=0, audit_rc=0,
+                   metadata_failed=0, term='xterm-256color', runtime_rc=0, preview_rc=0):
         function = re.findall(r'^updateAll\(\) \{\n.*?^\}', (ROOT/'dot_zshrc.tmpl').read_text(), re.M|re.S)[-1]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)/'bin'
@@ -24,7 +25,21 @@ class CompileConsent(unittest.TestCase):
                 path.write_text('#!/bin/sh\n'+drain+'echo ordinary-'+name+'\nexit 0\n')
                 path.chmod(0o755)
             (bindir/'tput').symlink_to('/usr/bin/tput')
-            script = f'updatePackagesAudit() {{ print audit-$*; return {audit_rc}; }}\nupdatePackagesBinaryOnly() {{ print binary-$*; UPDATE_PACKAGES_METADATA_FAILED={metadata_failed}; return {binary_rc}; }}\nupdatePackagesFromSource() {{ print SOURCE-$*; return {source_rc}; }}\n' + function + f'\nupdateAll {args}\n'
+            script = f'''
+updatePackagesPreview() {{ print PREVIEW; return {preview_rc}; }}
+updateRubyFromSource() {{ return 0; }}
+updatePackagesAudit() {{ print audit-$*; return {audit_rc}; }}
+updatePackagesBinaryOnly() {{ print binary-$*; UPDATE_PACKAGES_METADATA_FAILED={metadata_failed}; return {binary_rc}; }}
+updatePackagesFromSource() {{ print SOURCE-$*; return {source_rc}; }}
+updateAllCodex() {{ print Codex-$*; }}
+updatePackagesRuntime() {{
+    if [[ $1 == snapshot ]]; then print snapshot-token; return 0; fi
+    read -r baseline
+    [[ $baseline == snapshot-token ]] || return 99
+    print RUNTIME
+    return {runtime_rc}
+}}
+''' + function + f'\nupdateAll {args}\n'
             env = dict(os.environ, HOME=tmp, PATH=str(bindir), ZSH=tmp+'/absent', TERM=term)
             if reply is None:
                 result = subprocess.run(['/bin/zsh', '-f', '-c', script], env=env, text=True, capture_output=True, timeout=10)
@@ -64,12 +79,14 @@ class CompileConsent(unittest.TestCase):
         self.assertNotIn('SOURCE', output)
         self.assertNotIn('[s/N]', output)
         self.assertNotIn(CLEAR_SCREEN, output)
+        self.assertLess(output.index('PREVIEW'), output.index('binary-'))
 
     def test_clears_terminal_once_before_prompt(self):
         rc, output = self.run_update(reply='\n')
         self.assertEqual(rc, 0, output)
         self.assertEqual(output.count(CLEAR_SCREEN), 1, output)
         self.assertLess(output.index(CLEAR_SCREEN), output.index('[s/N]'))
+        self.assertLess(output.index('PREVIEW'), output.index('[s/N]'))
         self.assertNotIn('\x1b[3J', output)
 
     def test_runs_when_terminal_cannot_be_cleared(self):
@@ -91,7 +108,9 @@ class CompileConsent(unittest.TestCase):
             rc, output = self.run_update('--allow-compile', binary_rc=binary_rc)
             self.assertEqual(rc, 0, output)
             self.assertNotIn('[s/N]', output)
+            self.assertNotIn('PREVIEW', output)
             self.assertGreater(output.index('SOURCE'), output.index('ordinary-claude'))
+            self.assertGreater(output.index('RUNTIME'), output.index('SOURCE'))
             if binary_rc:
                 self.assertIn('Falha binária recuperada', output)
 
@@ -114,6 +133,17 @@ class CompileConsent(unittest.TestCase):
         self.assertEqual(rc, 2, output)
         self.assertNotIn('binary', output)
 
+    def test_bad_executable_prevents_success_even_if_inventory_is_current(self):
+        for runtime_rc in (1, 130):
+            rc, output = self.run_update('--allow-compile', runtime_rc=runtime_rc)
+            self.assertEqual(rc, runtime_rc, output)
+            self.assertNotIn('✓ updateAll concluído', output)
+
+    def test_canceled_preview_does_not_start_updates(self):
+        rc, output = self.run_update(preview_rc=130)
+        self.assertEqual(rc, 130, output)
+        self.assertNotIn('binary-', output)
+
     def test_pending_final_audit_prevents_false_success(self):
         for args in ('', '--allow-compile'):
             rc, output = self.run_update(args, audit_rc=1)
@@ -128,6 +158,8 @@ class CompileConsent(unittest.TestCase):
             self.assertIn('binary---dry-run', output)
             self.assertIn('audit---dry-run', output)
             self.assertNotIn('ordinary-', output)
+            self.assertNotIn('RUNTIME', output)
+            self.assertNotIn('Codex-', output)
             self.assertNotIn('[s/N]', output)
             self.assertEqual('SOURCE---dry-run' in output, '--allow-compile' in args)
             self.assertNotIn('✓ updateAll concluído', output)

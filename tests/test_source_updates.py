@@ -68,3 +68,16 @@ class SourceUpdates(unittest.TestCase):
             self.assertEqual(source.main(), 0)
             commands = [c.args[0] for c in runner.call_args_list]
             self.assertIn(['sudo', 'port', '-N', '-s', 'upgrade', 'libvpx', 'buildmakejobs=2'], commands)
+
+    def test_preview_only_lists_ports_missing_an_archive_or_signature(self):
+        rows = 'aom\t3.15.3\taom-intel.tbz2\nzlib\t1.4\tzlib-intel.tbz2\n'
+        with patch.object(source, 'outdated_ports', return_value=['aom', 'zlib']), \
+                patch.object(source, 'execute', return_value=rows) as execute, \
+                patch.object(source.runpy, 'run_path', return_value={
+                    'binary_available': lambda url: '/zlib/' in url,
+                }), patch('builtins.print') as report:
+            source.preview_ports(ROOT/'dot_local/lib/package-updates')
+            self.assertEqual(execute.call_count, 1)
+            self.assertEqual(execute.call_args.args[0][-2:], ['aom', 'zlib'])
+            report.assert_called_once_with(
+                '  MacPorts aom → 3.15.3 (arquivo oficial ou assinatura indisponível)', flush=True)

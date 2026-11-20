@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 require "json"
-# AI archive updates use their dedicated, version-verified path.
-excluded = %w[ai-memory ai-jail]
+# AI archive updates use their dedicated path. Herdr is updated manually.
+excluded = %w[ai-memory ai-jail herdr]
 formulas = Formula.installed.select { |formula| formula.outdated? && !excluded.include?(formula.name) &&
   formula.installed_kegs.none? { |keg| keg.version > formula.pkg_version } }
 indexed = formulas.to_h { |formula| [formula.name, formula] }
